@@ -204,11 +204,8 @@ else()
   )
   
   if(
-    CMAKE_C_COMPILER_ID
-    STREQUAL "Clang"
-    OR
-    CMAKE_C_COMPILER_ID
-    STREQUAL "AppleClang"
+    CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_C_COMPILER_ID STREQUAL
+    "AppleClang"
   )
     target_compile_options(
       ${PROJECT_NAME}

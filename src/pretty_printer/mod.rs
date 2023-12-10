@@ -42,7 +42,7 @@ impl CMakeValue {
 
 impl CMakeCommand {
     fn print(&self) -> RcDoc<'static, ()> {
-        let args = print_args(&self.args);
+        let args = print_args(&self.args, false);
 
         RcDoc::text(self.name.to_string())
             .append("(")
@@ -52,8 +52,8 @@ impl CMakeCommand {
     }
 }
 
-fn print_args(args: &[CMakeValue]) -> RcDoc<'static> {
-    let args = print_args_to_vec(args);
+fn print_args(args: &[CMakeValue], grouping_disabled: bool) -> RcDoc<'static> {
+    let args = print_args_to_vec(args, grouping_disabled);
     RcDoc::line_()
         .append(RcDoc::intersperse(args, RcDoc::line()))
         .append(RcDoc::line_())
@@ -61,25 +61,41 @@ fn print_args(args: &[CMakeValue]) -> RcDoc<'static> {
         .group()
 }
 
-fn print_args_to_vec(args: &[CMakeValue]) -> Vec<RcDoc<'static>> {
+fn print_args_to_vec(args: &[CMakeValue], grouping_disabled: bool) -> Vec<RcDoc<'static>> {
     if args.is_empty() {
         vec![]
     } else {
         let mut groups = vec![vec![&args[0]]];
         for arg in args.iter().skip(1) {
-            if let CMakeValue::ArgumentSpecifier(_) = arg {
-                groups.push(vec![arg]);
-            } else if let CMakeValue::Comment(_) = arg {
-                groups.push(vec![arg]);
-            } else {
+            if grouping_disabled {
                 groups.last_mut().unwrap().push(arg);
+            } else {
+                if let CMakeValue::ArgumentSpecifier(_) = arg {
+                    groups.push(vec![arg]);
+                } else if let CMakeValue::Comment(_) = arg {
+                    groups.push(vec![arg]);
+                } else {
+                    groups.last_mut().unwrap().push(arg);
+                }
             }
         }
 
         groups
             .iter()
             .map(|values| {
-                RcDoc::intersperse(values.iter().map(|value| value.to_doc()), RcDoc::line()).group()
+                let result = RcDoc::intersperse(
+                    values.iter().map(|value| value.to_doc()),
+                    if grouping_disabled {
+                        RcDoc::softline()
+                    } else {
+                        RcDoc::line()
+                    },
+                );
+                if grouping_disabled {
+                    result
+                } else {
+                    result.group()
+                }
             })
             .collect::<Vec<RcDoc>>()
     }
@@ -93,14 +109,14 @@ impl CMakeIfStatement {
                 .group()
         };
         let mut output = RcDoc::text("if(")
-            .append(print_args(&self.base.condition))
+            .append(print_args(&self.base.condition, true))
             .append(RcDoc::text(")"))
             .append(make_body(&self.base.body));
 
         for else_if in &self.else_ifs {
             output = output
                 .append("elseif(")
-                .append(print_args(&else_if.condition))
+                .append(print_args(&else_if.condition, true))
                 .append(RcDoc::text(")"))
                 .append(make_body(&else_if.body));
         }
@@ -125,7 +141,7 @@ fn print_clause_body(
     RcDoc::intersperse(
         [
             RcDoc::text(format!("{}(", keyword))
-                .append(print_args(clause))
+                .append(print_args(clause, false))
                 .append(RcDoc::text(")"))
                 .group(),
             RcDoc::intersperse(body.iter().map(|statement| statement.print()), RcDoc::nil())
