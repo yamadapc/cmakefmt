@@ -1,6 +1,6 @@
 [package]
 name = "cmakefmt"
-description = "Good enough (for me) CMake auto formatter."
+description = "Good enough (MVP, early) CMake auto formatter."
 authors = ["Pedro Tacla Yamada <tacla.yamada+git@gmail.com>"]
 readme = "README.md"
 license = "MIT"
