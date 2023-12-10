@@ -118,10 +118,16 @@ else()
 endif()
 
 macro(sodium_check_func func var)
-check_function_exists(${func} ${var})
-if(${var})
-  target_compile_definitions(${PROJECT_NAME} PRIVATE ${var}=1)
-endif()
+
+  
+  check_function_exists(${func} ${var})
+  
+  
+  if(${var})
+    target_compile_definitions(${PROJECT_NAME} PRIVATE ${var}=1)
+  endif()
+  
+
 endmacro()
 
 if(MSVC)

@@ -55,9 +55,23 @@ pub struct CMakeForEachStatement {
 }
 
 #[derive(Debug, PartialEq, PartialOrd)]
+pub struct CMakeFunctionStatement {
+    pub clause: Vec<CMakeValue>,
+    pub body: Vec<CMakeStatement>,
+}
+
+#[derive(Debug, PartialEq, PartialOrd)]
+pub struct CMakeMacroStatement {
+    pub clause: Vec<CMakeValue>,
+    pub body: Vec<CMakeStatement>,
+}
+
+#[derive(Debug, PartialEq, PartialOrd)]
 pub enum CMakeStatement {
     If(CMakeIfStatement),
     For(CMakeForEachStatement),
+    Function(CMakeFunctionStatement),
+    Macro(CMakeMacroStatement),
     Command(CMakeCommand),
     Comment(String),
     Newline,

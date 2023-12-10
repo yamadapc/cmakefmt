@@ -1,3 +1,4 @@
+use std::fmt::format;
 // The MIT License (MIT)
 //
 // Copyright (c) 2023 Pedro Tacla Yamada
@@ -22,8 +23,8 @@
 use pretty::RcDoc;
 
 use crate::parser::types::{
-    CMakeCommand, CMakeDocument, CMakeForEachStatement, CMakeIfStatement, CMakeStatement,
-    CMakeValue,
+    CMakeCommand, CMakeDocument, CMakeForEachStatement, CMakeFunctionStatement, CMakeIfStatement,
+    CMakeMacroStatement, CMakeStatement, CMakeValue,
 };
 
 impl CMakeValue {
@@ -51,7 +52,7 @@ impl CMakeCommand {
     }
 }
 
-fn print_args(args: &Vec<CMakeValue>) -> RcDoc<'static> {
+fn print_args(args: &[CMakeValue]) -> RcDoc<'static> {
     let args = print_args_to_vec(args);
     RcDoc::line_()
         .append(RcDoc::intersperse(args, RcDoc::line()))
@@ -60,7 +61,7 @@ fn print_args(args: &Vec<CMakeValue>) -> RcDoc<'static> {
         .group()
 }
 
-fn print_args_to_vec(args: &Vec<CMakeValue>) -> Vec<RcDoc<'static>> {
+fn print_args_to_vec(args: &[CMakeValue]) -> Vec<RcDoc<'static>> {
     if args.is_empty() {
         vec![]
     } else {
@@ -116,22 +117,42 @@ impl CMakeIfStatement {
     }
 }
 
+fn print_clause_body(
+    keyword: &str,
+    clause: &[CMakeValue],
+    body: &[CMakeStatement],
+) -> RcDoc<'static> {
+    RcDoc::text(format!("{}(", keyword))
+        .append(print_args(clause))
+        .append(RcDoc::text(")"))
+        .append(RcDoc::line())
+        .append(
+            RcDoc::intersperse(
+                body.iter().map(|statement| statement.print()),
+                RcDoc::line(),
+            )
+            .nest(2)
+            .group(),
+        )
+        .append(RcDoc::line())
+        .append(RcDoc::text(format!("end{}()", keyword)))
+}
+
 impl CMakeForEachStatement {
     fn print(&self) -> RcDoc<'static> {
-        RcDoc::text("foreach(")
-            .append(print_args(&self.clause))
-            .append(RcDoc::text(")"))
-            .append(RcDoc::line())
-            .append(
-                RcDoc::intersperse(
-                    self.body.iter().map(|statement| statement.print()),
-                    RcDoc::line(),
-                )
-                .nest(2)
-                .group(),
-            )
-            .append(RcDoc::line())
-            .append(RcDoc::text("endforeach()"))
+        print_clause_body("foreach", &self.clause, &self.body)
+    }
+}
+
+impl CMakeFunctionStatement {
+    fn print(&self) -> RcDoc<'static> {
+        print_clause_body("function", &self.clause, &self.body)
+    }
+}
+
+impl CMakeMacroStatement {
+    fn print(&self) -> RcDoc<'static> {
+        print_clause_body("macro", &self.clause, &self.body)
     }
 }
 
@@ -143,6 +164,8 @@ impl CMakeStatement {
             CMakeStatement::Newline => RcDoc::hardline(),
             CMakeStatement::If(if_statement) => if_statement.print(),
             CMakeStatement::For(for_statement) => for_statement.print(),
+            CMakeStatement::Function(fn_statement) => fn_statement.print(),
+            CMakeStatement::Macro(m_statement) => m_statement.print(),
         }
     }
 }
@@ -173,277 +196,4 @@ impl CMakeDocument {
 }
 
 #[cfg(test)]
-mod test {
-    use super::*;
-    use crate::parser::types::{CMakeIfStatement, CmakeIfBase};
-
-    #[test]
-    fn pretty_print_command_without_args() {
-        let mut vec_writer = Vec::new();
-        {
-            let command = CMakeCommand {
-                name: "foo".to_string(),
-                args: vec![],
-            };
-            command.print().render(80, &mut vec_writer).unwrap();
-        }
-        let str = String::from_utf8(vec_writer).unwrap();
-        assert_eq!(str, "foo()");
-    }
-
-    #[test]
-    fn pretty_print_command_with_single_arg() {
-        let mut vec_writer = Vec::new();
-        {
-            let command = CMakeCommand {
-                name: "cmake_version".to_string(),
-                args: vec![CMakeValue::StringLiteral(String::from("1.2.3"))],
-            };
-            command.print().render(80, &mut vec_writer).unwrap();
-        }
-        let str = String::from_utf8(vec_writer).unwrap();
-        assert_eq!(str, "cmake_version(1.2.3)");
-    }
-
-    #[test]
-    fn pretty_print_command_with_multiple_args() {
-        let mut vec_writer = Vec::new();
-        {
-            let command = CMakeCommand {
-                name: "foo".to_string(),
-                args: vec![
-                    CMakeValue::StringLiteral(String::from("a")),
-                    CMakeValue::StringLiteral(String::from("b")),
-                    CMakeValue::StringLiteral(String::from("c")),
-                    CMakeValue::StringLiteral(String::from("d")),
-                    CMakeValue::StringLiteral(String::from("e")),
-                ],
-            };
-            command.print().render(80, &mut vec_writer).unwrap();
-        }
-        let str = String::from_utf8(vec_writer).unwrap();
-        assert_eq!(str, "foo(a b c d e)");
-    }
-
-    #[test]
-    fn pretty_print_command_with_long_line_args() {
-        let mut vec_writer = Vec::new();
-        {
-            let command = CMakeCommand {
-                name: "foo".to_string(),
-                args: vec![
-                    CMakeValue::StringLiteral(String::from(
-                        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                    )),
-                    CMakeValue::StringLiteral(String::from(
-                        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-                    )),
-                    CMakeValue::StringLiteral(String::from(
-                        "cccccccccccccccccccccccccccccccccccccccccccccccccc",
-                    )),
-                    CMakeValue::StringLiteral(String::from(
-                        "dddddddddddddddddddddddddddddddddddddddddddddddddd",
-                    )),
-                    CMakeValue::StringLiteral(String::from(
-                        "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-                    )),
-                ],
-            };
-            command.print().render(80, &mut vec_writer).unwrap();
-        }
-        let str = String::from_utf8(vec_writer).unwrap();
-        assert_eq!(str, "foo(\n  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n  bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n  cccccccccccccccccccccccccccccccccccccccccccccccccc\n  dddddddddddddddddddddddddddddddddddddddddddddddddd\n  eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\n)");
-    }
-
-    #[test]
-    fn test_pretty_print_two_statements_has_no_blank_line() {
-        let mut vec_writer = Vec::new();
-        {
-            let document = CMakeDocument {
-                statements: vec![
-                    CMakeStatement::Command(CMakeCommand {
-                        name: "foo".to_string(),
-                        args: vec![],
-                    }),
-                    CMakeStatement::Newline,
-                    CMakeStatement::Command(CMakeCommand {
-                        name: "bar".to_string(),
-                        args: vec![],
-                    }),
-                ],
-            };
-            document.print().render(80, &mut vec_writer).unwrap();
-        }
-        let str = String::from_utf8(vec_writer).unwrap();
-        assert_eq!(str, "foo()\nbar()");
-    }
-
-    #[test]
-    fn test_args_still_stay_in_one_line_if_there_is_space() {
-        let mut vec_writer = Vec::new();
-        {
-            let document = CMakeDocument {
-                statements: vec![CMakeStatement::Command(CMakeCommand {
-                    name: "foo".to_string(),
-                    args: vec![
-                        CMakeValue::ArgumentSpecifier(String::from("LANGUAGE")),
-                        CMakeValue::ArgumentSpecifier(String::from("VERSION")),
-                    ],
-                })],
-            };
-            document.print().render(80, &mut vec_writer).unwrap();
-        }
-        let str = String::from_utf8(vec_writer).unwrap();
-        assert_eq!(str, "foo(LANGUAGE VERSION)");
-    }
-
-    #[test]
-    fn test_sample() {
-        let mut vec_writer = Vec::new();
-        let input = CMakeStatement::Command(CMakeCommand {
-            name: String::from("set"),
-            args: vec![
-                CMakeValue::ArgumentSpecifier(String::from("CMAKE_CXX_STANDARD_REQUIRED")),
-                CMakeValue::ArgumentSpecifier(String::from("ON")),
-            ],
-        });
-        input.print().render(80, &mut vec_writer).unwrap();
-        let str = String::from_utf8(vec_writer).unwrap();
-        assert_eq!(str, "set(CMAKE_CXX_STANDARD_REQUIRED ON)");
-    }
-
-    #[test]
-    fn test_args_are_grouped_with_upper_case_args() {
-        let mut vec_writer = Vec::new();
-        {
-            let document = CMakeDocument {
-                statements: vec![CMakeStatement::Command(CMakeCommand {
-                    name: "foo".to_string(),
-                    args: vec![
-                        CMakeValue::ArgumentSpecifier(String::from("LANGUAGE")),
-                        CMakeValue::StringLiteral(String::from("cxx")),
-                        CMakeValue::ArgumentSpecifier(String::from("VERSION")),
-                        CMakeValue::StringLiteral(String::from("1234")),
-                        CMakeValue::ArgumentSpecifier(String::from("OTHER")),
-                        CMakeValue::StringLiteral(String::from("here")),
-                        CMakeValue::ArgumentSpecifier(String::from("THING")),
-                        CMakeValue::StringLiteral(String::from(
-                            "0000000000000000000000000000000000",
-                        )),
-                    ],
-                })],
-            };
-            document.print().render(80, &mut vec_writer).unwrap();
-        }
-        let str = String::from_utf8(vec_writer).unwrap();
-        assert_eq!(str, "foo(\n  LANGUAGE cxx\n  VERSION 1234\n  OTHER here\n  THING 0000000000000000000000000000000000\n)");
-    }
-
-    #[test]
-    fn test_print_if_statement() {
-        let mut vec_writer = Vec::new();
-        {
-            let document = CMakeDocument {
-                statements: vec![CMakeStatement::If(CMakeIfStatement {
-                    base: CmakeIfBase {
-                        condition: vec![CMakeValue::ArgumentSpecifier(String::from(
-                            "CMAKE_COMPILER_IS_GNUCXX",
-                        ))],
-                        body: vec![
-                            CMakeStatement::Newline,
-                            CMakeStatement::Command(CMakeCommand {
-                                name: String::from("foo"),
-                                args: vec![],
-                            }),
-                            CMakeStatement::Newline,
-                        ],
-                    },
-                    else_ifs: vec![CmakeIfBase {
-                        condition: vec![CMakeValue::ArgumentSpecifier(String::from("MSVC"))],
-                        body: vec![
-                            CMakeStatement::Newline,
-                            CMakeStatement::Command(CMakeCommand {
-                                name: String::from("bar"),
-                                args: vec![],
-                            }),
-                            CMakeStatement::Newline,
-                        ],
-                    }],
-                    else_body: None,
-                })],
-            };
-            document.print().render(80, &mut vec_writer).unwrap();
-        }
-        let str = String::from_utf8(vec_writer).unwrap();
-        assert_eq!(
-            str,
-            r#"
-if(CMAKE_COMPILER_IS_GNUCXX)
-  foo()
-elseif(MSVC)
-  bar()
-endif()
-        "#
-            .trim()
-        );
-    }
-
-    #[test]
-    fn test_print_nested_if_statement() {
-        let mut vec_writer = Vec::new();
-        {
-            let document = CMakeDocument {
-                statements: vec![CMakeStatement::If(CMakeIfStatement {
-                    base: CmakeIfBase {
-                        condition: vec![CMakeValue::ArgumentSpecifier(String::from("a"))],
-                        body: vec![
-                            CMakeStatement::Newline,
-                            CMakeStatement::If(CMakeIfStatement {
-                                base: CmakeIfBase {
-                                    condition: vec![CMakeValue::ArgumentSpecifier(String::from(
-                                        "b",
-                                    ))],
-                                    body: vec![
-                                        CMakeStatement::Newline,
-                                        CMakeStatement::Command(CMakeCommand {
-                                            name: String::from("foo"),
-                                            args: vec![],
-                                        }),
-                                        CMakeStatement::Newline,
-                                    ],
-                                },
-                                else_ifs: vec![],
-                                else_body: None,
-                            }),
-                            CMakeStatement::Newline,
-                        ],
-                    },
-                    else_ifs: vec![],
-                    else_body: Some(vec![
-                        CMakeStatement::Newline,
-                        CMakeStatement::Command(CMakeCommand {
-                            name: String::from("bar"),
-                            args: vec![],
-                        }),
-                        CMakeStatement::Newline,
-                    ]),
-                })],
-            };
-            document.print().render(80, &mut vec_writer).unwrap();
-        }
-        let str = String::from_utf8(vec_writer).unwrap();
-        assert_eq!(
-            str,
-            r#"
-if(a)
-  if(b)
-    foo()
-  endif()
-else()
-  bar()
-endif()
-        "#
-            .trim()
-        );
-    }
-}
+mod test;

@@ -14,14 +14,25 @@ use nom::{
 };
 
 use crate::parser::types::{
-    CMakeCommand, CMakeDocument, CMakeForEachStatement, CMakeIfStatement, CMakeStatement,
-    CMakeValue, CmakeIfBase,
+    CMakeCommand, CMakeDocument, CMakeForEachStatement, CMakeFunctionStatement, CMakeIfStatement,
+    CMakeMacroStatement, CMakeStatement, CMakeValue, CmakeIfBase,
 };
 
 mod strings;
 pub mod types;
 
-const RESERVED_WORDS: [&str; 6] = ["if", "elseif", "else", "endif", "foreach", "endforeach"];
+const RESERVED_WORDS: [&str; 10] = [
+    "if",
+    "elseif",
+    "else",
+    "endif",
+    "foreach",
+    "endforeach",
+    "function",
+    "endfunction",
+    "macro",
+    "endmacro",
+];
 
 pub type IResult<I, O> = Result<(I, O), nom::Err<error::VerboseError<I>>>;
 
@@ -153,16 +164,47 @@ fn cmake_if_block(input: &str) -> IResult<&str, CMakeStatement> {
     ))
 }
 
-fn cmake_foreach_block(input: &str) -> IResult<&str, CMakeStatement> {
-    let (input, _) = tag("foreach")(input)?;
-    let (input, _) = space0(input)?;
-    let (input, condition) = cmake_args(input)?;
-    let (input, body) = many0(delimited(space0, cmake_statement, space0))(input)?;
-    let (input, _) = skip_empty_command("endforeach")(input)?;
+fn cmake_clause_body_block<'a>(
+    keyword: &'a str,
+) -> impl Fn(&str) -> IResult<&str, (Vec<CMakeValue>, Vec<CMakeStatement>)> + 'a {
+    move |input| {
+        let (input, _) = tag(keyword)(input)?;
+        let (input, _) = space0(input)?;
+        let (input, condition) = cmake_args(input)?;
+        let (input, body) = many0(delimited(space0, cmake_statement, space0))(input)?;
+        let (input, _) = skip_empty_command(&format!("end{}", keyword))(input)?;
 
+        Ok((input, (condition, body)))
+    }
+}
+
+fn cmake_foreach_block(input: &str) -> IResult<&str, CMakeStatement> {
+    let (input, (condition, body)) = cmake_clause_body_block("foreach")(input)?;
     Ok((
         input,
         CMakeStatement::For(CMakeForEachStatement {
+            clause: condition,
+            body,
+        }),
+    ))
+}
+
+fn cmake_function_block(input: &str) -> IResult<&str, CMakeStatement> {
+    let (input, (condition, body)) = cmake_clause_body_block("function")(input)?;
+    Ok((
+        input,
+        CMakeStatement::Function(CMakeFunctionStatement {
+            clause: condition,
+            body,
+        }),
+    ))
+}
+
+fn cmake_macro_block(input: &str) -> IResult<&str, CMakeStatement> {
+    let (input, (condition, body)) = cmake_clause_body_block("macro")(input)?;
+    Ok((
+        input,
+        CMakeStatement::Macro(CMakeMacroStatement {
             clause: condition,
             body,
         }),
@@ -184,6 +226,8 @@ fn cmake_statement(input: &str) -> IResult<&str, CMakeStatement> {
     alt((
         cmake_if_block,
         cmake_foreach_block,
+        cmake_function_block,
+        cmake_macro_block,
         cmake_command.map(CMakeStatement::Command),
         cmake_comment.map(|item| CMakeStatement::Comment(item.to_string())),
         tuple((tag("\n"), space0)).map(|_| CMakeStatement::Newline),
