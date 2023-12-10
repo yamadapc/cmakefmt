@@ -1,5 +1,5 @@
 # cmakefmt
-Good enough for me CMake file formatting tool.
+Good enough CMake auto formatter. No settings, prints to STDOUT.
 
 ## Install
 ```
