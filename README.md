@@ -1,5 +1,5 @@
 # cmakefmt
-MVP CMake file formatting tool.
+Good enough for me CMake file formatting tool.
 
 ## Install
 ```

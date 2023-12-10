@@ -1,34 +1,12 @@
-// The MIT License (MIT)
-//
-// Copyright (c) 2023 Pedro Tacla Yamada
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-use std::cmp::min;
-
-use nom::branch::alt;
-use nom::bytes::complete::{tag, take_till1};
-use nom::character::complete::{char, multispace0, multispace1, space0};
-use nom::error::ErrorKind;
-use nom::multi::{many1, separated_list0};
-use nom::sequence::{delimited, tuple};
-use nom::{IResult, InputIter, InputTakeAtPosition};
-use nom::{InputTake, Parser};
+use nom::{
+    branch::alt,
+    bytes::complete::{tag, take_till1},
+    character::complete::{char, multispace0, multispace1, space0},
+    error::ErrorKind,
+    multi::{many1, separated_list0},
+    sequence::{delimited, tuple},
+    IResult, InputIter, InputTakeAtPosition, Parser,
+};
 
 use crate::parser::types::{CMakeCommand, CMakeDocument, CMakeStatement, CMakeValue};
 
@@ -65,20 +43,16 @@ fn cmake_string_literal(input: &str) -> IResult<&str, CMakeValue> {
 }
 
 fn cmake_value(input: &str) -> IResult<&str, CMakeValue> {
-    eprintln!("parse value at {:?}", input.take(min(input.len(), 10)));
     let (input, result) = alt((
         cmake_comment.map(|item| CMakeValue::Comment(item.to_string())),
         cmake_quoted_string_literal,
         cmake_string_literal,
     ))(input)?;
-    eprintln!(">> {:?}", result);
     Ok((input, result))
 }
 
 fn cmake_command(input: &str) -> IResult<&str, CMakeCommand> {
-    eprintln!("parse cmd at {:?}", input.take(min(input.len(), 10)));
     let (input, name) = cmake_command_name(input)?;
-    eprintln!("parse args at {:?}", input.take(min(input.len(), 10)));
     let (input, args) = delimited(
         char('('),
         delimited(

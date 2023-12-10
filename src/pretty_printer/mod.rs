@@ -28,7 +28,8 @@ impl CMakeValue {
         match self {
             CMakeValue::QuotedString(str) => RcDoc::text(format!("\"{}\"", str)),
             CMakeValue::StringLiteral(str) => RcDoc::text(str.to_string()),
-            CMakeValue::Comment(str) => RcDoc::text(format!("#{}", str)),
+            CMakeValue::Comment(str) => RcDoc::text(format!("#{}", str))
+                .flat_alt(RcDoc::text(format!("#{}", str)).append(RcDoc::hardline())),
             CMakeValue::ArgumentSpecifier(arg) => RcDoc::text(arg.to_string()),
         }
     }
@@ -59,10 +60,13 @@ impl CMakeCommand {
             for arg in self.args.iter().skip(1) {
                 if let CMakeValue::ArgumentSpecifier(_) = arg {
                     groups.push(vec![arg]);
+                } else if let CMakeValue::Comment(_) = arg {
+                    groups.push(vec![arg]);
                 } else {
                     groups.last_mut().unwrap().push(arg);
                 }
             }
+
             groups
                 .iter()
                 .map(|values| {
