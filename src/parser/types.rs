@@ -25,7 +25,6 @@ pub enum CMakeValue {
     ArgumentSpecifier(String),
     QuotedString(String),
     StringLiteral(String),
-    Variable(String),
     Comment(String),
     Parenthesis(String),
 }

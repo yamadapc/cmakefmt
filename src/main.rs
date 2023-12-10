@@ -57,3 +57,35 @@ fn main() {
         }
     };
 }
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn test_smoke_tests() {
+        let input_output: Vec<&str> = vec![
+            r#"
+cmake_minimum_required(VERSION 3.26)
+project(pyramid_envelope VERSION 0.0.1 LANGUAGES CXX)
+add_subdirectory(
+  ${CMAKE_CURRENT_LIST_DIR}/vendor/juce ${CMAKE_BINARY_DIR}/juce
+  EXCLUDE_FROM_ALL
+  # don't build examples etc, also don't install
+)
+            "#,
+        ]
+        .iter()
+        .map(|s| s.trim())
+        .collect();
+
+        for input in input_output.iter() {
+            let output = super::all_consuming(super::parser::cmake_parser)(input);
+            let output = output.unwrap().1.print();
+            let mut writer = vec![];
+            {
+                output.render(80, &mut writer).unwrap();
+            }
+            let output = String::from_utf8(writer).unwrap();
+            assert_eq!(input, &output.trim());
+        }
+    }
+}

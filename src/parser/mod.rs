@@ -51,19 +51,12 @@ fn cmake_string_literal(input: &str) -> IResult<&str, CMakeValue> {
     Ok((input, CMakeValue::StringLiteral(result.to_string())))
 }
 
-fn cmake_variable(input: &str) -> IResult<&str, CMakeValue> {
-    let (input, name) =
-        delimited(tag("${"), take_till1(|item: char| item == '}'), char('}'))(input)?;
-    Ok((input, CMakeValue::Variable(name.to_string())))
-}
-
 fn cmake_value(input: &str) -> IResult<&str, CMakeValue> {
     let (input, result) = context(
         "Value",
         alt((
             cmake_comment.map(|item| CMakeValue::Comment(item.to_string())),
             cmake_quoted_string_literal,
-            cmake_variable,
             cmake_string_literal,
         )),
     )(input)?;
@@ -214,9 +207,37 @@ mod test {
     }
 
     #[test]
-    fn test_parse_variable() {
-        let (_, result) = all_consuming(cmake_value)("${VARIABLE}").unwrap();
-        assert_eq!(result, CMakeValue::Variable("VARIABLE".to_string()));
+    fn test_parse_command_with_variable() {
+        let (_, result) =
+            all_consuming(cmake_command)("foo(\n  ${CMAKE_CURRENT_LIST_DIR}/vendor\n)").unwrap();
+        assert_eq!(
+            result,
+            CMakeCommand {
+                name: "foo".to_string(),
+                args: vec![CMakeValue::StringLiteral(
+                    "${CMAKE_CURRENT_LIST_DIR}/vendor".to_string()
+                ),],
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_command_with_line_break() {
+        let (_, result) =
+            all_consuming(cmake_command)("foo(\n  name\n  VERSION bar\n  LANGUAGE ZIG\n)").unwrap();
+        assert_eq!(
+            result,
+            CMakeCommand {
+                name: "foo".to_string(),
+                args: vec![
+                    CMakeValue::StringLiteral("name".to_string()),
+                    CMakeValue::ArgumentSpecifier("VERSION".to_string()),
+                    CMakeValue::StringLiteral("bar".to_string()),
+                    CMakeValue::ArgumentSpecifier("LANGUAGE".to_string()),
+                    CMakeValue::ArgumentSpecifier("ZIG".to_string()),
+                ],
+            }
+        );
     }
 
     #[test]
@@ -235,7 +256,7 @@ mod test {
                 CMakeValue::Parenthesis(String::from(")")),
                 CMakeValue::ArgumentSpecifier(String::from("OR")),
                 CMakeValue::Parenthesis(String::from("(")),
-                CMakeValue::Variable(String::from("CMAKE_CXX_COMPILER_ID")),
+                CMakeValue::StringLiteral(String::from("${CMAKE_CXX_COMPILER_ID}")),
                 CMakeValue::ArgumentSpecifier(String::from("MATCHES")),
                 CMakeValue::QuotedString(String::from("Clang")),
                 CMakeValue::Parenthesis(String::from(")"))
