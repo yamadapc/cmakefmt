@@ -1,3 +1,7 @@
+# 0.1.2 (10-12-2023)
+
+* Fix broken variable handling
+
 # 0.1.1 (10-12-2023)
 
 * Fix if statements and some parenthesis handling
