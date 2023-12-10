@@ -1,3 +1,7 @@
+# 0.1.4 (10-12-2023)
+
+* Improve output quality
+
 # 0.1.3 (10-12-2023)
 
 * Fix foreach handling
