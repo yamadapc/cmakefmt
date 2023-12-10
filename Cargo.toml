@@ -6,7 +6,7 @@ readme = "README.md"
 license = "MIT"
 license-file = "LICENSE"
 repository = "https://github.com/yamadapc/cmakefmt"
-version = "0.1.0"
+version = "0.1.0-alpha.0"
 edition = "2021"
 
 [dependencies]
