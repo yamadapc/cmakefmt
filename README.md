@@ -11,5 +11,9 @@ cargo install cmakefmt
 cmakefmt <file>
 ```
 
+## Bugs
+
+There are still lots of bugs on more complex CMake files.
+
 ## License
 MIT

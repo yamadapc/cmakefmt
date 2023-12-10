@@ -354,7 +354,7 @@ endif()
     assert_eq!(
         result,
         CMakeDocument {
-            statements: vec![CMakeStatement::If(CmakeIfStatement {
+            statements: vec![CMakeStatement::If(CMakeIfStatement {
                 base: CmakeIfBase {
                     condition: vec![CMakeValue::ArgumentSpecifier(String::from(
                         "CMAKE_COMPILER_IS_GNUCXX"
@@ -391,7 +391,7 @@ fn test_parse_if_statement_with_single_condition() {
     let (_, result) = all_consuming(cmake_if_block)(input).unwrap();
     assert_eq!(
         result,
-        CMakeStatement::If(CmakeIfStatement {
+        CMakeStatement::If(CMakeIfStatement {
             base: CmakeIfBase {
                 condition: vec![CMakeValue::ArgumentSpecifier(String::from("ON"))],
                 body: vec![
@@ -415,7 +415,7 @@ fn test_parse_if_statement_with_else() {
     let (_, result) = all_consuming(cmake_if_block)(input).unwrap();
     assert_eq!(
         result,
-        CMakeStatement::If(CmakeIfStatement {
+        CMakeStatement::If(CMakeIfStatement {
             base: CmakeIfBase {
                 condition: vec![CMakeValue::ArgumentSpecifier(String::from("OFF"))],
                 body: vec![
@@ -446,12 +446,12 @@ fn test_parse_nested_if_statements() {
     let (_, result) = all_consuming(cmake_if_block)(input).unwrap();
     assert_eq!(
         result,
-        CMakeStatement::If(CmakeIfStatement {
+        CMakeStatement::If(CMakeIfStatement {
             base: CmakeIfBase {
                 condition: vec![CMakeValue::ArgumentSpecifier(String::from("ON"))],
                 body: vec![
                     CMakeStatement::Newline,
-                    CMakeStatement::If(CmakeIfStatement {
+                    CMakeStatement::If(CMakeIfStatement {
                         base: CmakeIfBase {
                             condition: vec![CMakeValue::ArgumentSpecifier(String::from("OFF"))],
                             body: vec![
@@ -535,5 +535,25 @@ foo(
                 CMakeValue::StringLiteral("baz".to_string()),
             ],
         }
+    );
+}
+
+#[test]
+fn test_parse_foreach_block_with_space_after_command() {
+    let input = r#"
+foreach (line ${config_ac_contents})
+endforeach ()
+"#
+    .trim();
+    let (_, result) = all_consuming(cmake_foreach_block)(input).unwrap();
+    assert_eq!(
+        result,
+        CMakeStatement::For(CMakeForEachStatement {
+            clause: vec![
+                CMakeValue::StringLiteral(String::from("line")),
+                CMakeValue::StringLiteral(String::from("${config_ac_contents}"))
+            ],
+            body: vec![CMakeStatement::Newline]
+        }),
     );
 }

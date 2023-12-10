@@ -14,11 +14,14 @@ use nom::{
 };
 
 use crate::parser::types::{
-    CMakeCommand, CMakeDocument, CMakeStatement, CMakeValue, CmakeIfBase, CmakeIfStatement,
+    CMakeCommand, CMakeDocument, CMakeForEachStatement, CMakeIfStatement, CMakeStatement,
+    CMakeValue, CmakeIfBase,
 };
 
 mod strings;
 pub mod types;
+
+const RESERVED_WORDS: [&str; 6] = ["if", "elseif", "else", "endif", "foreach", "endforeach"];
 
 pub type IResult<I, O> = Result<(I, O), nom::Err<error::VerboseError<I>>>;
 
@@ -65,7 +68,7 @@ fn cmake_value(input: &str) -> IResult<&str, CMakeValue> {
 
 fn cmake_command(input: &str) -> IResult<&str, CMakeCommand> {
     let (input, name) = cmake_command_name(input)?;
-    if name == "elseif" || name == "endif" || name == "if" || name == "else" {
+    if RESERVED_WORDS.contains(&name) {
         return Err(nom::Err::Error(error::VerboseError::from_error_kind(
             input,
             ErrorKind::AlphaNumeric,
@@ -133,16 +136,16 @@ fn cmake_if_block(input: &str) -> IResult<&str, CMakeStatement> {
     let (input, else_body) = opt(delimited(
         space0,
         tuple((
-            tag("else()"),
+            skip_empty_command("else"),
             many0(delimited(space0, cmake_statement, space0)),
         )),
         space0,
     ))(input)?;
-    let (input, _) = tag("endif()")(input)?;
+    let (input, _) = skip_empty_command("endif")(input)?;
 
     Ok((
         input,
-        CMakeStatement::If(CmakeIfStatement {
+        CMakeStatement::If(CMakeIfStatement {
             base: CmakeIfBase { condition, body },
             else_ifs,
             else_body: else_body.map(|(_, body)| body),
@@ -150,9 +153,37 @@ fn cmake_if_block(input: &str) -> IResult<&str, CMakeStatement> {
     ))
 }
 
+fn cmake_foreach_block(input: &str) -> IResult<&str, CMakeStatement> {
+    let (input, _) = tag("foreach")(input)?;
+    let (input, _) = space0(input)?;
+    let (input, condition) = cmake_args(input)?;
+    let (input, body) = many0(delimited(space0, cmake_statement, space0))(input)?;
+    let (input, _) = skip_empty_command("endforeach")(input)?;
+
+    Ok((
+        input,
+        CMakeStatement::For(CMakeForEachStatement {
+            clause: condition,
+            body,
+        }),
+    ))
+}
+
+fn skip_empty_command<'a>(name: &'a str) -> impl Fn(&str) -> IResult<&str, ()> + 'a {
+    move |input| {
+        let (input, _) = tag(name)(input)?;
+        let (input, _) = space0(input)?;
+        let (input, _) = tag("(")(input)?;
+        let (input, _) = space0(input)?;
+        let (input, _) = tag(")")(input)?;
+        Ok((input, ()))
+    }
+}
+
 fn cmake_statement(input: &str) -> IResult<&str, CMakeStatement> {
     alt((
         cmake_if_block,
+        cmake_foreach_block,
         cmake_command.map(CMakeStatement::Command),
         cmake_comment.map(|item| CMakeStatement::Comment(item.to_string())),
         tuple((tag("\n"), space0)).map(|_| CMakeStatement::Newline),

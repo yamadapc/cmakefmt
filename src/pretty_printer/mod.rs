@@ -22,7 +22,8 @@
 use pretty::RcDoc;
 
 use crate::parser::types::{
-    CMakeCommand, CMakeDocument, CMakeStatement, CMakeValue, CmakeIfStatement,
+    CMakeCommand, CMakeDocument, CMakeForEachStatement, CMakeIfStatement, CMakeStatement,
+    CMakeValue,
 };
 
 impl CMakeValue {
@@ -83,7 +84,7 @@ fn print_args_to_vec(args: &Vec<CMakeValue>) -> Vec<RcDoc<'static>> {
     }
 }
 
-impl CmakeIfStatement {
+impl CMakeIfStatement {
     fn print(&self) -> RcDoc<'static> {
         let make_body = |body: &Vec<CMakeStatement>| {
             RcDoc::intersperse(body.iter().map(|statement| statement.print()), RcDoc::nil())
@@ -115,6 +116,25 @@ impl CmakeIfStatement {
     }
 }
 
+impl CMakeForEachStatement {
+    fn print(&self) -> RcDoc<'static> {
+        RcDoc::text("foreach(")
+            .append(print_args(&self.clause))
+            .append(RcDoc::text(")"))
+            .append(RcDoc::line())
+            .append(
+                RcDoc::intersperse(
+                    self.body.iter().map(|statement| statement.print()),
+                    RcDoc::line(),
+                )
+                .nest(2)
+                .group(),
+            )
+            .append(RcDoc::line())
+            .append(RcDoc::text("endforeach()"))
+    }
+}
+
 impl CMakeStatement {
     fn print(&self) -> RcDoc<'static, ()> {
         match self {
@@ -122,6 +142,7 @@ impl CMakeStatement {
             CMakeStatement::Comment(comment) => RcDoc::text(format!("#{}", comment)),
             CMakeStatement::Newline => RcDoc::hardline(),
             CMakeStatement::If(if_statement) => if_statement.print(),
+            CMakeStatement::For(for_statement) => for_statement.print(),
         }
     }
 }
@@ -154,7 +175,7 @@ impl CMakeDocument {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::parser::types::{CmakeIfBase, CmakeIfStatement};
+    use crate::parser::types::{CMakeIfStatement, CmakeIfBase};
 
     #[test]
     fn pretty_print_command_without_args() {
@@ -323,7 +344,7 @@ mod test {
         let mut vec_writer = Vec::new();
         {
             let document = CMakeDocument {
-                statements: vec![CMakeStatement::If(CmakeIfStatement {
+                statements: vec![CMakeStatement::If(CMakeIfStatement {
                     base: CmakeIfBase {
                         condition: vec![CMakeValue::ArgumentSpecifier(String::from(
                             "CMAKE_COMPILER_IS_GNUCXX",
@@ -372,12 +393,12 @@ endif()
         let mut vec_writer = Vec::new();
         {
             let document = CMakeDocument {
-                statements: vec![CMakeStatement::If(CmakeIfStatement {
+                statements: vec![CMakeStatement::If(CMakeIfStatement {
                     base: CmakeIfBase {
                         condition: vec![CMakeValue::ArgumentSpecifier(String::from("a"))],
                         body: vec![
                             CMakeStatement::Newline,
-                            CMakeStatement::If(CmakeIfStatement {
+                            CMakeStatement::If(CMakeIfStatement {
                                 base: CmakeIfBase {
                                     condition: vec![CMakeValue::ArgumentSpecifier(String::from(
                                         "b",

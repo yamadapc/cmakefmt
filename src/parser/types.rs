@@ -42,15 +42,22 @@ pub struct CmakeIfBase {
 }
 
 #[derive(Debug, PartialEq, PartialOrd)]
-pub struct CmakeIfStatement {
+pub struct CMakeIfStatement {
     pub base: CmakeIfBase,
     pub else_ifs: Vec<CmakeIfBase>,
     pub else_body: Option<Vec<CMakeStatement>>,
 }
 
 #[derive(Debug, PartialEq, PartialOrd)]
+pub struct CMakeForEachStatement {
+    pub clause: Vec<CMakeValue>,
+    pub body: Vec<CMakeStatement>,
+}
+
+#[derive(Debug, PartialEq, PartialOrd)]
 pub enum CMakeStatement {
-    If(CmakeIfStatement),
+    If(CMakeIfStatement),
+    For(CMakeForEachStatement),
     Command(CMakeCommand),
     Comment(String),
     Newline,
