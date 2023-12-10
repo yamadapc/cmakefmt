@@ -15,6 +15,12 @@ fn test_parse_string_literal_with_special_characters() {
 }
 
 #[test]
+fn test_parse_string_literal_with_parens() {
+    let result = all_consuming(cmake_string_literal)("(((foo").unwrap_err();
+    assert!(matches!(result, nom::Err::Error(_)));
+}
+
+#[test]
 fn test_parse_quoted_string_with_escaped_quotes() {
     let (_, result) = all_consuming(cmake_quoted_string_literal)(r#""foo""#).unwrap();
     assert_eq!(result, CMakeValue::QuotedString(r#"foo"#.to_string()));
@@ -274,6 +280,28 @@ fn test_parse_cmake_arg_parenthesis() {
 }
 
 #[test]
+fn test_parse_cmake_nested_arg_parenthesis() {
+    let input = r#"
+((NOT MSVC) OR HERE)
+    "#
+    .trim();
+    let (_, result) = all_consuming(cmake_arg_parenthesis)(input).unwrap();
+    assert_eq!(
+        result,
+        vec![
+            CMakeValue::Parenthesis("(".to_string()),
+            CMakeValue::Parenthesis("(".to_string()),
+            CMakeValue::ArgumentSpecifier("NOT".to_string()),
+            CMakeValue::ArgumentSpecifier("MSVC".to_string()),
+            CMakeValue::Parenthesis(")".to_string()),
+            CMakeValue::ArgumentSpecifier("OR".to_string()),
+            CMakeValue::ArgumentSpecifier("HERE".to_string()),
+            CMakeValue::Parenthesis(")".to_string()),
+        ]
+    );
+}
+
+#[test]
 fn test_parse_command_with_two_args() {
     let (_, result) = all_consuming(cmake_command)("foo(bar foo)").unwrap();
     assert_eq!(
@@ -355,7 +383,7 @@ endif()
         result,
         CMakeDocument {
             statements: vec![CMakeStatement::If(CMakeIfStatement {
-                base: CmakeIfBase {
+                base: CMakeIfBase {
                     condition: vec![CMakeValue::ArgumentSpecifier(String::from(
                         "CMAKE_COMPILER_IS_GNUCXX"
                     ))],
@@ -368,7 +396,7 @@ endif()
                         CMakeStatement::Newline,
                     ],
                 },
-                else_ifs: vec![CmakeIfBase {
+                else_ifs: vec![CMakeIfBase {
                     condition: vec![CMakeValue::ArgumentSpecifier(String::from("MSVC"))],
                     body: vec![
                         CMakeStatement::Newline,
@@ -392,7 +420,7 @@ fn test_parse_if_statement_with_single_condition() {
     assert_eq!(
         result,
         CMakeStatement::If(CMakeIfStatement {
-            base: CmakeIfBase {
+            base: CMakeIfBase {
                 condition: vec![CMakeValue::ArgumentSpecifier(String::from("ON"))],
                 body: vec![
                     CMakeStatement::Newline,
@@ -416,7 +444,7 @@ fn test_parse_if_statement_with_else() {
     assert_eq!(
         result,
         CMakeStatement::If(CMakeIfStatement {
-            base: CmakeIfBase {
+            base: CMakeIfBase {
                 condition: vec![CMakeValue::ArgumentSpecifier(String::from("OFF"))],
                 body: vec![
                     CMakeStatement::Newline,
@@ -447,12 +475,12 @@ fn test_parse_nested_if_statements() {
     assert_eq!(
         result,
         CMakeStatement::If(CMakeIfStatement {
-            base: CmakeIfBase {
+            base: CMakeIfBase {
                 condition: vec![CMakeValue::ArgumentSpecifier(String::from("ON"))],
                 body: vec![
                     CMakeStatement::Newline,
                     CMakeStatement::If(CMakeIfStatement {
-                        base: CmakeIfBase {
+                        base: CMakeIfBase {
                             condition: vec![CMakeValue::ArgumentSpecifier(String::from("OFF"))],
                             body: vec![
                                 CMakeStatement::Newline,
@@ -572,6 +600,37 @@ endfunction ()
             clause: vec![CMakeValue::StringLiteral(String::from("foo")),],
             body: vec![CMakeStatement::Newline]
         }),
+    );
+}
+
+#[test]
+fn test_parse_else_with_args() {
+    let input = "if(OFF)\nfoo()\nelse()\nbar()\nendif()";
+    let (_, result) = all_consuming(cmake_if_block)(input).unwrap();
+    assert_eq!(
+        result,
+        CMakeStatement::If(CMakeIfStatement {
+            base: CMakeIfBase {
+                condition: vec![CMakeValue::ArgumentSpecifier(String::from("OFF"))],
+                body: vec![
+                    CMakeStatement::Newline,
+                    CMakeStatement::Command(CMakeCommand {
+                        name: String::from("foo"),
+                        args: vec![]
+                    }),
+                    CMakeStatement::Newline,
+                ],
+            },
+            else_ifs: vec![],
+            else_body: Some(vec![
+                CMakeStatement::Newline,
+                CMakeStatement::Command(CMakeCommand {
+                    name: String::from("bar"),
+                    args: vec![]
+                }),
+                CMakeStatement::Newline,
+            ]),
+        })
     );
 }
 

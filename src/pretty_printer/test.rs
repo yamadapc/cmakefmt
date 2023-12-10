@@ -1,5 +1,5 @@
 use super::*;
-use crate::parser::types::{CMakeIfStatement, CmakeIfBase};
+use crate::parser::types::{CMakeIfBase, CMakeIfStatement};
 
 #[test]
 fn pretty_print_command_without_args() {
@@ -167,7 +167,7 @@ fn test_print_if_statement() {
     {
         let document = CMakeDocument {
             statements: vec![CMakeStatement::If(CMakeIfStatement {
-                base: CmakeIfBase {
+                base: CMakeIfBase {
                     condition: vec![CMakeValue::ArgumentSpecifier(String::from(
                         "CMAKE_COMPILER_IS_GNUCXX",
                     ))],
@@ -180,7 +180,7 @@ fn test_print_if_statement() {
                         CMakeStatement::Newline,
                     ],
                 },
-                else_ifs: vec![CmakeIfBase {
+                else_ifs: vec![CMakeIfBase {
                     condition: vec![CMakeValue::ArgumentSpecifier(String::from("MSVC"))],
                     body: vec![
                         CMakeStatement::Newline,
@@ -216,12 +216,12 @@ fn test_print_nested_if_statement() {
     {
         let document = CMakeDocument {
             statements: vec![CMakeStatement::If(CMakeIfStatement {
-                base: CmakeIfBase {
+                base: CMakeIfBase {
                     condition: vec![CMakeValue::ArgumentSpecifier(String::from("a"))],
                     body: vec![
                         CMakeStatement::Newline,
                         CMakeStatement::If(CMakeIfStatement {
-                            base: CmakeIfBase {
+                            base: CMakeIfBase {
                                 condition: vec![CMakeValue::ArgumentSpecifier(String::from("b"))],
                                 body: vec![
                                     CMakeStatement::Newline,

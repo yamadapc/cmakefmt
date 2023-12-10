@@ -14,8 +14,8 @@ use nom::{
 };
 
 use crate::parser::types::{
-    CMakeCommand, CMakeDocument, CMakeForEachStatement, CMakeFunctionStatement, CMakeIfStatement,
-    CMakeMacroStatement, CMakeStatement, CMakeValue, CmakeIfBase,
+    CMakeCommand, CMakeDocument, CMakeForEachStatement, CMakeFunctionStatement, CMakeIfBase,
+    CMakeIfStatement, CMakeMacroStatement, CMakeStatement, CMakeValue,
 };
 
 mod strings;
@@ -55,7 +55,8 @@ fn cmake_quoted_string_literal(input: &str) -> IResult<&str, CMakeValue> {
 }
 
 fn cmake_string_literal(input: &str) -> IResult<&str, CMakeValue> {
-    let (input, result) = take_till1(|item: char| item.is_whitespace() || item == ')')(input)?;
+    let (input, result) =
+        take_till1(|item: char| item.is_whitespace() || item == ')' || item == '(')(input)?;
     if result
         .iter_elements()
         .all(|c| c.is_uppercase() || c == '_' || c.is_numeric())
@@ -107,12 +108,12 @@ fn cmake_args(input: &str) -> IResult<&str, Vec<CMakeValue>> {
 fn cmake_arg_parenthesis(input: &str) -> IResult<&str, Vec<CMakeValue>> {
     let (input, (start, inner, end)) = tuple((
         char('(').map(|_| CMakeValue::Parenthesis("(".to_string())),
-        separated_list0(multispace1, cmake_value),
+        separated_list0(multispace1, cmake_arg_list_inner),
         char(')').map(|_| CMakeValue::Parenthesis(")".to_string())),
     ))(input)?;
 
     let mut result = vec![start];
-    result.extend(inner);
+    result.extend(inner.into_iter().flatten());
     result.push(end);
     Ok((input, result))
 }
@@ -128,13 +129,13 @@ fn cmake_arg_list_inner(input: &str) -> IResult<&str, Vec<CMakeValue>> {
     )(input)
 }
 
-fn cmake_else_if_block(input: &str) -> IResult<&str, CmakeIfBase> {
+fn cmake_else_if_block(input: &str) -> IResult<&str, CMakeIfBase> {
     let (input, _) = tag("elseif")(input)?;
     let (input, _) = space0(input)?;
     let (input, condition) = cmake_args(input)?;
     let (input, body) = many0(delimited(space0, cmake_statement, space0))(input)?;
 
-    Ok((input, CmakeIfBase { condition, body }))
+    Ok((input, CMakeIfBase { condition, body }))
 }
 
 fn cmake_if_block(input: &str) -> IResult<&str, CMakeStatement> {
@@ -152,12 +153,12 @@ fn cmake_if_block(input: &str) -> IResult<&str, CMakeStatement> {
         )),
         space0,
     ))(input)?;
-    let (input, _) = skip_empty_command("endif")(input)?;
+    let (input, _) = tuple((tag("endif"), space0, cmake_args))(input)?;
 
     Ok((
         input,
         CMakeStatement::If(CMakeIfStatement {
-            base: CmakeIfBase { condition, body },
+            base: CMakeIfBase { condition, body },
             else_ifs,
             else_body: else_body.map(|(_, body)| body),
         }),

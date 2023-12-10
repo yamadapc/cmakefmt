@@ -36,15 +36,15 @@ pub struct CMakeCommand {
 }
 
 #[derive(Debug, PartialEq, PartialOrd)]
-pub struct CmakeIfBase {
+pub struct CMakeIfBase {
     pub condition: Vec<CMakeValue>,
     pub body: Vec<CMakeStatement>,
 }
 
 #[derive(Debug, PartialEq, PartialOrd)]
 pub struct CMakeIfStatement {
-    pub base: CmakeIfBase,
-    pub else_ifs: Vec<CmakeIfBase>,
+    pub base: CMakeIfBase,
+    pub else_ifs: Vec<CMakeIfBase>,
     pub else_body: Option<Vec<CMakeStatement>>,
 }
 
