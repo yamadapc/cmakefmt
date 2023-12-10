@@ -1,3 +1,24 @@
+// The MIT License (MIT)
+//
+// Copyright (c) 2023 Pedro Tacla Yamada
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
 use pretty::RcDoc;
 
 use crate::parser::types::{CMakeCommand, CMakeDocument, CMakeStatement, CMakeValue};
@@ -6,9 +27,9 @@ impl CMakeValue {
     fn to_doc(&self) -> RcDoc<'static, ()> {
         match self {
             CMakeValue::QuotedString(str) => RcDoc::text(format!("\"{}\"", str)),
-            CMakeValue::StringLiteral(str) => RcDoc::text(format!("{}", str)),
+            CMakeValue::StringLiteral(str) => RcDoc::text(str.to_string()),
             CMakeValue::Comment(str) => RcDoc::text(format!("#{}", str)),
-            CMakeValue::ArgumentSpecifier(arg) => RcDoc::text(format!("{}", arg)),
+            CMakeValue::ArgumentSpecifier(arg) => RcDoc::text(arg.to_string()),
         }
     }
 }
@@ -56,9 +77,9 @@ impl CMakeCommand {
 impl CMakeStatement {
     fn print(&self) -> RcDoc<'static, ()> {
         match self {
-            CMakeStatement::CMakeCommandStatement(command) => command.print(),
-            CMakeStatement::CMakeCommentStatement(comment) => RcDoc::text(format!("#{}", comment)),
-            CMakeStatement::CMakeNewline => RcDoc::hardline(),
+            CMakeStatement::Command(command) => command.print(),
+            CMakeStatement::Comment(comment) => RcDoc::text(format!("#{}", comment)),
+            CMakeStatement::Newline => RcDoc::hardline(),
         }
     }
 }
@@ -70,7 +91,7 @@ impl CMakeDocument {
                 let mut result = vec![];
                 let mut newline_count = 0;
                 for statement in self.statements.iter() {
-                    if let CMakeStatement::CMakeNewline = statement {
+                    if let CMakeStatement::Newline = statement {
                         if newline_count > 2 {
                             continue;
                         }
@@ -176,12 +197,12 @@ mod test {
         {
             let document = CMakeDocument {
                 statements: vec![
-                    CMakeStatement::CMakeCommandStatement(CMakeCommand {
+                    CMakeStatement::Command(CMakeCommand {
                         name: "foo".to_string(),
                         args: vec![],
                     }),
-                    CMakeStatement::CMakeNewline,
-                    CMakeStatement::CMakeCommandStatement(CMakeCommand {
+                    CMakeStatement::Newline,
+                    CMakeStatement::Command(CMakeCommand {
                         name: "bar".to_string(),
                         args: vec![],
                     }),
@@ -198,7 +219,7 @@ mod test {
         let mut vec_writer = Vec::new();
         {
             let document = CMakeDocument {
-                statements: vec![CMakeStatement::CMakeCommandStatement(CMakeCommand {
+                statements: vec![CMakeStatement::Command(CMakeCommand {
                     name: "foo".to_string(),
                     args: vec![
                         CMakeValue::ArgumentSpecifier(String::from("LANGUAGE")),
@@ -215,7 +236,7 @@ mod test {
     #[test]
     fn test_sample() {
         let mut vec_writer = Vec::new();
-        let input = CMakeStatement::CMakeCommandStatement(CMakeCommand {
+        let input = CMakeStatement::Command(CMakeCommand {
             name: String::from("set"),
             args: vec![
                 CMakeValue::ArgumentSpecifier(String::from("CMAKE_CXX_STANDARD_REQUIRED")),
@@ -232,7 +253,7 @@ mod test {
         let mut vec_writer = Vec::new();
         {
             let document = CMakeDocument {
-                statements: vec![CMakeStatement::CMakeCommandStatement(CMakeCommand {
+                statements: vec![CMakeStatement::Command(CMakeCommand {
                     name: "foo".to_string(),
                     args: vec![
                         CMakeValue::ArgumentSpecifier(String::from("LANGUAGE")),
