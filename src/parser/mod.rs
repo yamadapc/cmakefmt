@@ -1,13 +1,16 @@
-use nom::combinator::opt;
+use nom::bytes::complete::take_till;
+use nom::combinator::{map, opt};
+use nom::error::{context, ParseError};
 use nom::multi::many0;
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_till1},
     character::complete::{char, multispace0, multispace1, space0},
+    error,
     error::ErrorKind,
     multi::{many1, separated_list0},
     sequence::{delimited, tuple},
-    IResult, InputIter, InputTakeAtPosition, Parser,
+    InputIter, InputTakeAtPosition, Parser,
 };
 
 use crate::parser::types::{
@@ -17,9 +20,11 @@ use crate::parser::types::{
 mod strings;
 pub mod types;
 
+pub type IResult<I, O> = Result<(I, O), nom::Err<error::VerboseError<I>>>;
+
 fn cmake_comment(input: &str) -> IResult<&str, &str> {
     let (input, _) = char('#')(input)?;
-    let (input, contents) = take_till1(|item| item == '\n')(input)?;
+    let (input, contents) = take_till(|item| item == '\n')(input)?;
     Ok((input, contents))
 }
 
@@ -46,32 +51,35 @@ fn cmake_string_literal(input: &str) -> IResult<&str, CMakeValue> {
     Ok((input, CMakeValue::StringLiteral(result.to_string())))
 }
 
+fn cmake_variable(input: &str) -> IResult<&str, CMakeValue> {
+    let (input, name) =
+        delimited(tag("${"), take_till1(|item: char| item == '}'), char('}'))(input)?;
+    Ok((input, CMakeValue::Variable(name.to_string())))
+}
+
 fn cmake_value(input: &str) -> IResult<&str, CMakeValue> {
-    let (input, result) = alt((
-        cmake_comment.map(|item| CMakeValue::Comment(item.to_string())),
-        cmake_quoted_string_literal,
-        cmake_string_literal,
-    ))(input)?;
+    let (input, result) = context(
+        "Value",
+        alt((
+            cmake_comment.map(|item| CMakeValue::Comment(item.to_string())),
+            cmake_quoted_string_literal,
+            cmake_variable,
+            cmake_string_literal,
+        )),
+    )(input)?;
     Ok((input, result))
 }
 
 fn cmake_command(input: &str) -> IResult<&str, CMakeCommand> {
     let (input, name) = cmake_command_name(input)?;
     if name == "elseif" || name == "endif" || name == "if" {
-        return Err(nom::Err::Error(nom::error::Error::new(
+        return Err(nom::Err::Error(error::VerboseError::from_error_kind(
             input,
             ErrorKind::AlphaNumeric,
         )));
     }
-    let (input, args) = delimited(
-        char('('),
-        delimited(
-            multispace0,
-            separated_list0(multispace1, cmake_value),
-            multispace0,
-        ),
-        char(')'),
-    )(input)?;
+    let (input, _) = space0(input)?;
+    let (input, args) = cmake_args(input)?;
     Ok((
         input,
         CMakeCommand {
@@ -81,15 +89,43 @@ fn cmake_command(input: &str) -> IResult<&str, CMakeCommand> {
     ))
 }
 
+fn cmake_args(input: &str) -> IResult<&str, Vec<CMakeValue>> {
+    delimited(
+        char('('),
+        delimited(multispace0, cmake_arg_list_inner, multispace0),
+        char(')'),
+    )(input)
+}
+
+fn cmake_arg_parenthesis(input: &str) -> IResult<&str, Vec<CMakeValue>> {
+    let (input, (start, inner, end)) = tuple((
+        char('(').map(|_| CMakeValue::Parenthesis("(".to_string())),
+        separated_list0(multispace1, cmake_value),
+        char(')').map(|_| CMakeValue::Parenthesis(")".to_string())),
+    ))(input)?;
+
+    let mut result = vec![start];
+    result.extend(inner);
+    result.push(end);
+    Ok((input, result))
+}
+
+fn cmake_arg_list_inner(input: &str) -> IResult<&str, Vec<CMakeValue>> {
+    let value_parser = map(cmake_value, |item| vec![item]);
+    map(
+        alt((separated_list0(
+            multispace1,
+            alt((cmake_arg_parenthesis, value_parser)),
+        ),)),
+        |output| output.into_iter().flatten().collect(),
+    )(input)
+}
+
 fn cmake_else_if_block(input: &str) -> IResult<&str, CmakeIfBase> {
     let (input, _) = tag("elseif")(input)?;
     let (input, _) = space0(input)?;
-    let (input, condition) = delimited(
-        char('('),
-        separated_list0(multispace1, cmake_value),
-        char(')'),
-    )(input)?;
-    let (input, body) = many1(delimited(space0, cmake_statement, space0))(input)?;
+    let (input, condition) = cmake_args(input)?;
+    let (input, body) = many0(delimited(space0, cmake_statement, space0))(input)?;
 
     Ok((input, CmakeIfBase { condition, body }))
 }
@@ -97,18 +133,14 @@ fn cmake_else_if_block(input: &str) -> IResult<&str, CmakeIfBase> {
 fn cmake_if_block(input: &str) -> IResult<&str, CMakeStatement> {
     let (input, _) = tag("if")(input)?;
     let (input, _) = space0(input)?;
-    let (input, condition) = delimited(
-        char('('),
-        separated_list0(multispace1, cmake_value),
-        char(')'),
-    )(input)?;
+    let (input, condition) = cmake_args(input)?;
 
     let (input, body) = many0(delimited(space0, cmake_statement, space0))(input)?;
     let (input, else_ifs) = many0(delimited(space0, cmake_else_if_block, space0))(input)?;
     let (input, else_body) = opt(delimited(
         space0,
         tuple((
-            tag("else"),
+            tag("else()"),
             many0(delimited(space0, cmake_statement, space0)),
         )),
         space0,
@@ -178,6 +210,73 @@ mod test {
                 name: "foo".to_string(),
                 args: vec![CMakeValue::StringLiteral("bar".to_string())],
             }
+        );
+    }
+
+    #[test]
+    fn test_parse_variable() {
+        let (_, result) = all_consuming(cmake_value)("${VARIABLE}").unwrap();
+        assert_eq!(result, CMakeValue::Variable("VARIABLE".to_string()));
+    }
+
+    #[test]
+    fn test_parse_complex_expr() {
+        let input = r#"
+((NOT MSVC) OR (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang"))
+        "#
+        .trim();
+        let (_, result) = all_consuming(cmake_args)(input).unwrap();
+        assert_eq!(
+            result,
+            vec![
+                CMakeValue::Parenthesis(String::from("(")),
+                CMakeValue::ArgumentSpecifier(String::from("NOT")),
+                CMakeValue::ArgumentSpecifier(String::from("MSVC")),
+                CMakeValue::Parenthesis(String::from(")")),
+                CMakeValue::ArgumentSpecifier(String::from("OR")),
+                CMakeValue::Parenthesis(String::from("(")),
+                CMakeValue::Variable(String::from("CMAKE_CXX_COMPILER_ID")),
+                CMakeValue::ArgumentSpecifier(String::from("MATCHES")),
+                CMakeValue::QuotedString(String::from("Clang")),
+                CMakeValue::Parenthesis(String::from(")"))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_parse_arg_list_inner() {
+        let input = r#"
+(NOT MSVC) OR
+        "#
+        .trim();
+        let (_, result) = all_consuming(cmake_arg_list_inner)(input).unwrap();
+        assert_eq!(
+            result,
+            vec![
+                CMakeValue::Parenthesis(String::from("(")),
+                CMakeValue::ArgumentSpecifier(String::from("NOT")),
+                CMakeValue::ArgumentSpecifier(String::from("MSVC")),
+                CMakeValue::Parenthesis(String::from(")")),
+                CMakeValue::ArgumentSpecifier(String::from("OR"))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_parse_cmake_arg_parenthesis() {
+        let input = r#"
+(NOT MSVC)
+        "#
+        .trim();
+        let (_, result) = all_consuming(cmake_arg_parenthesis)(input).unwrap();
+        assert_eq!(
+            result,
+            vec![
+                CMakeValue::Parenthesis("(".to_string()),
+                CMakeValue::ArgumentSpecifier("NOT".to_string()),
+                CMakeValue::ArgumentSpecifier("MSVC".to_string()),
+                CMakeValue::Parenthesis(")".to_string()),
+            ]
         );
     }
 

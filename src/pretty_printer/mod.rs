@@ -30,9 +30,11 @@ impl CMakeValue {
         match self {
             CMakeValue::QuotedString(str) => RcDoc::text(format!("\"{}\"", str)),
             CMakeValue::StringLiteral(str) => RcDoc::text(str.to_string()),
+            CMakeValue::Variable(str) => RcDoc::text(format!("${{{}}}", str)),
             CMakeValue::Comment(str) => RcDoc::text(format!("#{}", str))
                 .flat_alt(RcDoc::text(format!("#{}", str)).append(RcDoc::hardline())),
             CMakeValue::ArgumentSpecifier(arg) => RcDoc::text(arg.to_string()),
+            CMakeValue::Parenthesis(char) => RcDoc::text(char.to_string()),
         }
     }
 }

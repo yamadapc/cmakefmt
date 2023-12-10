@@ -20,6 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 use nom::combinator::all_consuming;
+use nom::error::convert_error;
 
 mod parser;
 mod pretty_printer;
@@ -31,11 +32,28 @@ fn main() {
         std::process::exit(1);
     }
 
-    let contents = std::fs::read_to_string(target.unwrap()).expect("Failed to open file");
-    let (_, contents) =
-        all_consuming(parser::cmake_parser)(&contents).expect("Failed to parse input file");
-    contents
-        .print()
-        .render(80, &mut std::io::stdout())
-        .expect("Failed to format file");
+    let file_contents = std::fs::read_to_string(target.unwrap()).expect("Failed to open file");
+    match all_consuming(parser::cmake_parser)(&file_contents) {
+        Ok((_, contents)) => {
+            contents
+                .print()
+                .render(80, &mut std::io::stdout())
+                .expect("Failed to format file");
+        }
+        Err(nom::Err::Error(err)) => {
+            eprintln!("Failed to parse file");
+            eprintln!("{}", convert_error(file_contents.as_str(), err));
+            std::process::exit(1);
+        }
+        Err(nom::Err::Failure(err)) => {
+            eprintln!("Failed to parse file");
+            eprintln!("{}", convert_error(file_contents.as_str(), err));
+            std::process::exit(1);
+        }
+        Err(nom::Err::Incomplete(err)) => {
+            eprintln!("EOF");
+            eprintln!("{:?}", err);
+            std::process::exit(1);
+        }
+    };
 }

@@ -19,12 +19,15 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
+
 #[derive(Debug, PartialEq, PartialOrd)]
 pub enum CMakeValue {
     ArgumentSpecifier(String),
     QuotedString(String),
     StringLiteral(String),
+    Variable(String),
     Comment(String),
+    Parenthesis(String),
 }
 
 #[derive(Debug, PartialEq, PartialOrd)]
