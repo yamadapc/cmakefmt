@@ -60,6 +60,9 @@ fn main() {
 
 #[cfg(test)]
 mod test {
+    use std::collections::HashMap;
+    use std::fs::DirEntry;
+
     #[test]
     fn test_smoke_tests() {
         let input_output: Vec<&str> = vec![
@@ -86,6 +89,59 @@ add_subdirectory(
             }
             let output = String::from_utf8(writer).unwrap();
             assert_eq!(input, &output.trim());
+        }
+    }
+
+    #[test]
+    fn test_snapshots() {
+        struct Group {
+            input_file: String,
+            output_file: String,
+        }
+
+        // read samples directory relative to cargo manifest directory
+        let cargo_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+        let files = std::fs::read_dir(format!("{}/samples", cargo_dir)).unwrap();
+        let all_files: Vec<DirEntry> = files.filter_map(|f| f.ok()).collect();
+        let mut groups: HashMap<String, Group> = HashMap::new();
+        all_files
+            .iter()
+            .map(|f| f.file_name().to_str().unwrap().to_string())
+            .for_each(|f| {
+                let mut split = f.split(".");
+                let base = split.next().unwrap();
+                let is_input = split.next().unwrap() == "input";
+                let entry = groups.entry(base.to_string()).or_insert(Group {
+                    input_file: "".to_string(),
+                    output_file: "".to_string(),
+                });
+                let content = std::fs::read_to_string(format!("{}/samples/{}", cargo_dir, f))
+                    .unwrap()
+                    .trim()
+                    .to_string();
+                if is_input {
+                    entry.input_file = content
+                } else {
+                    entry.output_file = content;
+                }
+            });
+
+        for (
+            _label,
+            Group {
+                input_file,
+                output_file,
+            },
+        ) in groups.iter()
+        {
+            let output = super::all_consuming(super::parser::cmake_parser)(&input_file);
+            let output = output.unwrap().1.print();
+            let mut writer = vec![];
+            {
+                output.render(80, &mut writer).unwrap();
+            }
+            let output = String::from_utf8(writer).unwrap();
+            assert_eq!(&output, output_file);
         }
     }
 }

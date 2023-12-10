@@ -1121,7 +1121,7 @@ if(UNIX AND NOT MINGW)
       src/ports/SkFontMgr_android_factory.cpp
       src/ports/SkFontMgr_android_parser.cpp
     )
-    else()# currently assume linux
+  else()# currently assume linux
     list(
       APPEND
       skia_sources
