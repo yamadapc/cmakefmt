@@ -557,3 +557,37 @@ endforeach ()
         }),
     );
 }
+
+#[test]
+fn test_parse_function() {
+    let input = r#"
+function (foo)
+endfunction ()
+"#
+    .trim();
+    let (_, result) = all_consuming(cmake_function_block)(input).unwrap();
+    assert_eq!(
+        result,
+        CMakeStatement::Function(CMakeFunctionStatement {
+            clause: vec![CMakeValue::StringLiteral(String::from("foo")),],
+            body: vec![CMakeStatement::Newline]
+        }),
+    );
+}
+
+#[test]
+fn test_parse_macro() {
+    let input = r#"
+macro (foo)
+endmacro ()
+"#
+    .trim();
+    let (_, result) = all_consuming(cmake_macro_block)(input).unwrap();
+    assert_eq!(
+        result,
+        CMakeStatement::Macro(CMakeMacroStatement {
+            clause: vec![CMakeValue::StringLiteral(String::from("foo")),],
+            body: vec![CMakeStatement::Newline]
+        }),
+    );
+}
