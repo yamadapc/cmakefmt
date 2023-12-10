@@ -15,43 +15,41 @@ impl CMakeValue {
 
 impl CMakeCommand {
     fn print(&self) -> RcDoc<'static, ()> {
+        let args = self.print_args();
+
         RcDoc::text(self.name.to_string())
             .append("(")
             .append(
                 RcDoc::line_()
-                    .append(RcDoc::intersperse(
-                        {
-                            if self.args.is_empty() {
-                                vec![]
-                            } else {
-                                let mut groups = vec![vec![&self.args[0]]];
-                                for arg in self.args.iter().skip(1) {
-                                    if let CMakeValue::ArgumentSpecifier(_) = arg {
-                                        groups.push(vec![arg]);
-                                    } else {
-                                        groups.last_mut().unwrap().push(arg);
-                                    }
-                                }
-                                groups
-                                    .iter()
-                                    .map(|values| {
-                                        RcDoc::intersperse(
-                                            values.iter().map(|value| value.to_doc()),
-                                            RcDoc::line(),
-                                        )
-                                        .group()
-                                    })
-                                    .collect::<Vec<RcDoc>>()
-                            }
-                        },
-                        RcDoc::line(),
-                    ))
+                    .append(RcDoc::intersperse(args, RcDoc::line()))
                     .append(RcDoc::line_())
                     .nest(2)
                     .group(),
             )
             .append(")")
             .group()
+    }
+
+    fn print_args(&self) -> Vec<RcDoc<'static>> {
+        if self.args.is_empty() {
+            vec![]
+        } else {
+            let mut groups = vec![vec![&self.args[0]]];
+            for arg in self.args.iter().skip(1) {
+                if let CMakeValue::ArgumentSpecifier(_) = arg {
+                    groups.push(vec![arg]);
+                } else {
+                    groups.last_mut().unwrap().push(arg);
+                }
+            }
+            groups
+                .iter()
+                .map(|values| {
+                    RcDoc::intersperse(values.iter().map(|value| value.to_doc()), RcDoc::line())
+                        .group()
+                })
+                .collect::<Vec<RcDoc>>()
+        }
     }
 }
 

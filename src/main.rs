@@ -4,8 +4,17 @@ mod parser;
 mod pretty_printer;
 
 fn main() {
-    let contents = std::fs::read_to_string("../poly-enveloper/cpp/CMakeLists.txt").unwrap();
-    let (_, contents) = all_consuming(parser::cmake_parser)(&contents).unwrap();
-    eprintln!("{:#?}", contents);
-    contents.print().render(80, &mut std::io::stdout()).unwrap();
+    let target = std::env::args().nth(1);
+    if target.is_none() {
+        eprintln!("Usage: cmakefmt <target>");
+        std::process::exit(1);
+    }
+
+    let contents = std::fs::read_to_string(target.unwrap()).expect("Failed to open file");
+    let (_, contents) =
+        all_consuming(parser::cmake_parser)(&contents).expect("Failed to parse input file");
+    contents
+        .print()
+        .render(80, &mut std::io::stdout())
+        .expect("Failed to format file");
 }
