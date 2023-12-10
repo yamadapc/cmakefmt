@@ -514,3 +514,26 @@ fn test_parse_command_with_nested_parenthesis() {
         }
     );
 }
+
+#[test]
+fn test_value_comment_within_command() {
+    let input = r#"
+foo(
+  bar # here
+  baz
+)
+    "#
+    .trim();
+    let (_, result) = all_consuming(cmake_command)(input).unwrap();
+    assert_eq!(
+        result,
+        CMakeCommand {
+            name: "foo".to_string(),
+            args: vec![
+                CMakeValue::StringLiteral("bar".to_string()),
+                CMakeValue::Comment(" here".to_string()),
+                CMakeValue::StringLiteral("baz".to_string()),
+            ],
+        }
+    );
+}
