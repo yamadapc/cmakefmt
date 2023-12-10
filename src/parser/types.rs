@@ -34,7 +34,21 @@ pub struct CMakeCommand {
 }
 
 #[derive(Debug, PartialEq, PartialOrd)]
+pub struct CmakeIfBase {
+    pub condition: Vec<CMakeValue>,
+    pub body: Vec<CMakeStatement>,
+}
+
+#[derive(Debug, PartialEq, PartialOrd)]
+pub struct CmakeIfStatement {
+    pub base: CmakeIfBase,
+    pub else_ifs: Vec<CmakeIfBase>,
+    pub else_body: Option<Vec<CMakeStatement>>,
+}
+
+#[derive(Debug, PartialEq, PartialOrd)]
 pub enum CMakeStatement {
+    If(CmakeIfStatement),
     Command(CMakeCommand),
     Comment(String),
     Newline,

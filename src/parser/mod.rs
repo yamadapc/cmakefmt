@@ -1,3 +1,5 @@
+use nom::combinator::opt;
+use nom::multi::many0;
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_till1},
@@ -8,7 +10,9 @@ use nom::{
     IResult, InputIter, InputTakeAtPosition, Parser,
 };
 
-use crate::parser::types::{CMakeCommand, CMakeDocument, CMakeStatement, CMakeValue};
+use crate::parser::types::{
+    CMakeCommand, CMakeDocument, CMakeStatement, CMakeValue, CmakeIfBase, CmakeIfStatement,
+};
 
 mod strings;
 pub mod types;
@@ -53,6 +57,12 @@ fn cmake_value(input: &str) -> IResult<&str, CMakeValue> {
 
 fn cmake_command(input: &str) -> IResult<&str, CMakeCommand> {
     let (input, name) = cmake_command_name(input)?;
+    if name == "elseif" || name == "endif" || name == "if" {
+        return Err(nom::Err::Error(nom::error::Error::new(
+            input,
+            ErrorKind::AlphaNumeric,
+        )));
+    }
     let (input, args) = delimited(
         char('('),
         delimited(
@@ -71,8 +81,53 @@ fn cmake_command(input: &str) -> IResult<&str, CMakeCommand> {
     ))
 }
 
+fn cmake_else_if_block(input: &str) -> IResult<&str, CmakeIfBase> {
+    let (input, _) = tag("elseif")(input)?;
+    let (input, _) = space0(input)?;
+    let (input, condition) = delimited(
+        char('('),
+        separated_list0(multispace1, cmake_value),
+        char(')'),
+    )(input)?;
+    let (input, body) = many1(delimited(space0, cmake_statement, space0))(input)?;
+
+    Ok((input, CmakeIfBase { condition, body }))
+}
+
+fn cmake_if_block(input: &str) -> IResult<&str, CMakeStatement> {
+    let (input, _) = tag("if")(input)?;
+    let (input, _) = space0(input)?;
+    let (input, condition) = delimited(
+        char('('),
+        separated_list0(multispace1, cmake_value),
+        char(')'),
+    )(input)?;
+
+    let (input, body) = many0(delimited(space0, cmake_statement, space0))(input)?;
+    let (input, else_ifs) = many0(delimited(space0, cmake_else_if_block, space0))(input)?;
+    let (input, else_body) = opt(delimited(
+        space0,
+        tuple((
+            tag("else"),
+            many0(delimited(space0, cmake_statement, space0)),
+        )),
+        space0,
+    ))(input)?;
+    let (input, _) = tag("endif()")(input)?;
+
+    Ok((
+        input,
+        CMakeStatement::If(CmakeIfStatement {
+            base: CmakeIfBase { condition, body },
+            else_ifs,
+            else_body: else_body.map(|(_, body)| body),
+        }),
+    ))
+}
+
 fn cmake_statement(input: &str) -> IResult<&str, CMakeStatement> {
     alt((
+        cmake_if_block,
         cmake_command.map(CMakeStatement::Command),
         cmake_comment.map(|item| CMakeStatement::Comment(item.to_string())),
         tuple((tag("\n"), space0)).map(|_| CMakeStatement::Newline),
@@ -80,7 +135,7 @@ fn cmake_statement(input: &str) -> IResult<&str, CMakeStatement> {
 }
 
 pub fn cmake_parser(input: &str) -> IResult<&str, CMakeDocument> {
-    let (input, statements) = many1(cmake_statement)(input)?;
+    let (input, statements) = many1(delimited(space0, cmake_statement, space0))(input)?;
     Ok((input, CMakeDocument { statements }))
 }
 
@@ -190,5 +245,51 @@ project(
                 }),]
             }
         );
+    }
+
+    #[test]
+    fn test_if_statements() {
+        let input = r#"
+if(CMAKE_COMPILER_IS_GNUCXX)
+  foo()
+elseif(MSVC)
+  bar()                      
+endif()
+        "#
+        .trim();
+
+        let (_, result) = all_consuming(cmake_parser)(input).unwrap();
+        assert_eq!(
+            result,
+            CMakeDocument {
+                statements: vec![CMakeStatement::If(CmakeIfStatement {
+                    base: CmakeIfBase {
+                        condition: vec![CMakeValue::ArgumentSpecifier(String::from(
+                            "CMAKE_COMPILER_IS_GNUCXX"
+                        ))],
+                        body: vec![
+                            CMakeStatement::Newline,
+                            CMakeStatement::Command(CMakeCommand {
+                                name: String::from("foo"),
+                                args: vec![]
+                            }),
+                            CMakeStatement::Newline,
+                        ],
+                    },
+                    else_ifs: vec![CmakeIfBase {
+                        condition: vec![CMakeValue::ArgumentSpecifier(String::from("MSVC"))],
+                        body: vec![
+                            CMakeStatement::Newline,
+                            CMakeStatement::Command(CMakeCommand {
+                                name: String::from("bar"),
+                                args: vec![]
+                            }),
+                            CMakeStatement::Newline,
+                        ],
+                    }],
+                    else_body: None,
+                }),]
+            }
+        )
     }
 }
