@@ -122,20 +122,19 @@ fn print_clause_body(
     clause: &[CMakeValue],
     body: &[CMakeStatement],
 ) -> RcDoc<'static> {
-    RcDoc::text(format!("{}(", keyword))
-        .append(print_args(clause))
-        .append(RcDoc::text(")"))
-        .append(RcDoc::line())
-        .append(
-            RcDoc::intersperse(
-                body.iter().map(|statement| statement.print()),
-                RcDoc::line(),
-            )
-            .nest(2)
-            .group(),
-        )
-        .append(RcDoc::line())
-        .append(RcDoc::text(format!("end{}()", keyword)))
+    RcDoc::intersperse(
+        [
+            RcDoc::text(format!("{}(", keyword))
+                .append(print_args(clause))
+                .append(RcDoc::text(")"))
+                .group(),
+            RcDoc::intersperse(body.iter().map(|statement| statement.print()), RcDoc::nil())
+                .nest(2)
+                .group(),
+            RcDoc::text(format!("end{}()", keyword)).group(),
+        ],
+        RcDoc::nil(),
+    )
 }
 
 impl CMakeForEachStatement {
@@ -167,6 +166,7 @@ impl CMakeStatement {
             CMakeStatement::Function(fn_statement) => fn_statement.print(),
             CMakeStatement::Macro(m_statement) => m_statement.print(),
         }
+        .group()
     }
 }
 

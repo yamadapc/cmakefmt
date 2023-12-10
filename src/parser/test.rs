@@ -591,3 +591,40 @@ endmacro ()
         }),
     );
 }
+
+#[test]
+fn test_newlines_are_tracked() {
+    let input = r#"
+function(foo)
+    bar(  x
+y z
+
+
+    )
+endfunction()
+    "#
+    .trim();
+    let (_, result) = all_consuming(cmake_parser)(input).unwrap();
+
+    assert_eq!(
+        result,
+        CMakeDocument {
+            statements: vec![CMakeStatement::Function(CMakeFunctionStatement {
+                clause: vec![CMakeValue::StringLiteral(String::from("foo")),],
+                body: vec![
+                    CMakeStatement::Newline,
+                    CMakeStatement::Command(CMakeCommand {
+                        name: String::from("bar"),
+                        args: vec![
+                            // TODO we don't want these newlines
+                            CMakeValue::StringLiteral(String::from("x")),
+                            CMakeValue::StringLiteral(String::from("y")),
+                            CMakeValue::StringLiteral(String::from("z")),
+                        ],
+                    }),
+                    CMakeStatement::Newline,
+                ]
+            })],
+        }
+    )
+}

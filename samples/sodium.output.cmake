@@ -24,15 +24,11 @@ cmake_minimum_required(VERSION 3.9)
 file(STRINGS ${CMAKE_CURRENT_LIST_DIR}/configure.ac config_ac_contents)
 
 foreach(line ${config_ac_contents})
-
-  
   if(line MATCHES "AC_INIT\(\[libsodium\],\[([0-9.]+)\],")
     set(VERSION ${CMAKE_MATCH_1})
   elseif(line MATCHES "SODIUM_LIBRARY_VERSION_(MAJOR|MINOR)=([0-9]+)")
     set(SODIUM_LIBRARY_VERSION_${CMAKE_MATCH_1} ${CMAKE_MATCH_2})
   endif()
-  
-
 endforeach()
 
 message("VERSION: ${VERSION}")
@@ -118,16 +114,10 @@ else()
 endif()
 
 macro(sodium_check_func func var)
-
-  
   check_function_exists(${func} ${var})
-  
-  
   if(${var})
     target_compile_definitions(${PROJECT_NAME} PRIVATE ${var}=1)
   endif()
-  
-
 endmacro()
 
 if(MSVC)
@@ -679,24 +669,13 @@ if(BUILD_TESTING)
   file(GLOB sodium_test_sources ${PROJECT_SOURCE_DIR}/test/default/*.c)
   
   foreach(test_src ${sodium_test_sources})
-  
-    
     get_filename_component(test_name ${test_src} NAME_WE)
     
-    
-    
-    
     add_executable(${test_name} ${test_src})
-    
-    
-    
     
     if(MSVC)
       target_compile_definitions(${test_name} PRIVATE _CRT_SECURE_NO_WARNINGS)
     endif()
-    
-    
-    
     
     target_include_directories(
       ${test_name}
@@ -707,13 +686,7 @@ if(BUILD_TESTING)
       $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/test/quirks>
     )
     
-    
-    
-    
     target_link_libraries(${test_name} PRIVATE ${PROJECT_NAME})
-    
-    
-    
     
     add_custom_command(
       TARGET ${test_name}
@@ -726,16 +699,11 @@ if(BUILD_TESTING)
       $<TARGET_FILE_DIR:${test_name}>
     )
     
-    
-    
-    
     add_test(
       NAME ${test_name}
       COMMAND ${test_name}
       WORKING_DIRECTORY $<TARGET_FILE_DIR:${test_name}>
     )
-    
-  
   endforeach()
 endif()
 

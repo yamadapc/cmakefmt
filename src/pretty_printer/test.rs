@@ -266,3 +266,39 @@ endif()
         .trim()
     );
 }
+
+#[test]
+fn test_preseving_newlines() {
+    let document = CMakeDocument {
+        statements: vec![CMakeStatement::Function(CMakeFunctionStatement {
+            clause: vec![CMakeValue::StringLiteral(String::from("foo"))],
+            body: vec![
+                CMakeStatement::Newline,
+                CMakeStatement::Command(CMakeCommand {
+                    name: String::from("bar"),
+                    args: vec![
+                        // TODO we don't want these newlines
+                        CMakeValue::StringLiteral(String::from("x")),
+                        CMakeValue::StringLiteral(String::from("y")),
+                        CMakeValue::StringLiteral(String::from("z")),
+                    ],
+                }),
+                CMakeStatement::Newline,
+            ],
+        })],
+    };
+    let mut vec_writer = Vec::new();
+    {
+        document.print().render(80, &mut vec_writer).unwrap();
+    }
+    let str = String::from_utf8(vec_writer).unwrap();
+    assert_eq!(
+        str,
+        r#"
+function(foo)
+  bar(x y z)
+endfunction()
+    "#
+        .trim()
+    )
+}
