@@ -1,3 +1,7 @@
+# 0.1.3 (10-12-2023)
+
+* Fix foreach handling
+
 # 0.1.2 (10-12-2023)
 
 * Fix broken variable handling
