@@ -1,3 +1,7 @@
+# 0.1.5 (11-12-2023)
+
+* Fix bugs with nested parenthesis and if statement arg printing
+
 # 0.1.4 (10-12-2023)
 
 * Improve output quality
