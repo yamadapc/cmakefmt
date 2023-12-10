@@ -1,5 +1,11 @@
 [package]
 name = "cmakefmt"
+description = "Good enough (for me) CMake auto formatter."
+authors = ["Pedro Tacla Yamada <tacla.yamada+git@gmail.com>"]
+readme = "README.md"
+license = "MIT"
+license-file = "LICENSE"
+repository = "https://github.com/yamadapc/cmakefmt"
 version = "0.1.0"
 edition = "2021"
 
