@@ -1,3 +1,7 @@
+# 0.1.6 (13-12-2023)
+
+* Improve quality of formatting boolean expressions
+
 # 0.1.5 (11-12-2023)
 
 * Fix bugs with nested parenthesis and if statement arg printing
