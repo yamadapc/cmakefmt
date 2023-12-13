@@ -35,6 +35,13 @@ fn main() {
                 .help("Write to the input file after formatting")
                 .action(ArgAction::SetTrue),
         )
+        .arg(
+            Arg::new("max-width")
+                .long("max-width")
+                .num_args(1)
+                .default_value("80")
+                .help("The column limit to be used"),
+        )
         .arg(arg!([file] "Target file").required(true))
         .get_matches();
 
@@ -47,9 +54,15 @@ fn main() {
             } else {
                 Box::new(std::io::stdout())
             };
+            let width = matches
+                .get_one("max-width")
+                .cloned()
+                .map(|s: String| s.parse::<usize>().ok())
+                .flatten()
+                .unwrap_or(80);
             contents
                 .print()
-                .render(80, &mut writer)
+                .render(width, &mut writer)
                 .expect("Failed to format file");
         }
         Err(nom::Err::Error(err)) => {
