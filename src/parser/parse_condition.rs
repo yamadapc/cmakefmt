@@ -29,7 +29,7 @@ fn cmake_condition_unary_test(input: &str) -> IResult<&str, CMakeCondition> {
     let (input, value) = cmake_condition(input)?;
     Ok((
         input,
-        CMakeCondition::UnaryLogicalOperator {
+        CMakeCondition::UnaryTest {
             operator: operator.to_string(),
             value: Box::new(value),
         },
