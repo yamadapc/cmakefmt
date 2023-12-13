@@ -1,3 +1,4 @@
+use crate::parser::parse_condition::cmake_condition;
 use nom::bytes::complete::take_till;
 use nom::combinator::{map, opt};
 use nom::error::{context, ParseError};
@@ -131,8 +132,12 @@ fn cmake_arg_list_inner(input: &str) -> IResult<&str, Vec<CMakeValue>> {
 
 fn cmake_else_if_block(input: &str) -> IResult<&str, CMakeIfBase> {
     let (input, _) = tag("elseif")(input)?;
-    let (input, _) = space0(input)?;
-    let (input, condition) = cmake_args(input)?;
+    let (input, _) = multispace0(input)?;
+    let (input, _) = tag("(")(input)?;
+    let (input, _) = multispace0(input)?;
+    let (input, condition) = cmake_condition(input)?;
+    let (input, _) = multispace0(input)?;
+    let (input, _) = tag(")")(input)?;
     let (input, body) = many0(delimited(space0, cmake_statement, space0))(input)?;
 
     Ok((input, CMakeIfBase { condition, body }))
@@ -140,8 +145,12 @@ fn cmake_else_if_block(input: &str) -> IResult<&str, CMakeIfBase> {
 
 fn cmake_if_block(input: &str) -> IResult<&str, CMakeStatement> {
     let (input, _) = tag("if")(input)?;
-    let (input, _) = space0(input)?;
-    let (input, condition) = cmake_args(input)?;
+    let (input, _) = multispace0(input)?;
+    let (input, _) = tag("(")(input)?;
+    let (input, _) = multispace0(input)?;
+    let (input, condition) = cmake_condition(input)?;
+    let (input, _) = multispace0(input)?;
+    let (input, _) = tag(")")(input)?;
 
     let (input, body) = many0(delimited(space0, cmake_statement, space0))(input)?;
     let (input, else_ifs) = many0(delimited(space0, cmake_else_if_block, space0))(input)?;
@@ -240,5 +249,6 @@ pub fn cmake_parser(input: &str) -> IResult<&str, CMakeDocument> {
     Ok((input, CMakeDocument { statements }))
 }
 
+mod parse_condition;
 #[cfg(test)]
 mod test;

@@ -1157,7 +1157,7 @@ if(NOT ARM)
       SKCMS_PORTABLE
     )
   endif()
-  if(( NOT MSVC ) OR ( ${CMAKE_CXX_COMPILER_ID} MATCHES "Clang" ))
+  if((NOT MSVC) OR (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang"))
     set_source_files_properties(
       src/core/SkCpu.cpp
       PROPERTIES

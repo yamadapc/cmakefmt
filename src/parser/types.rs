@@ -30,6 +30,37 @@ pub enum CMakeValue {
 }
 
 #[derive(Debug, PartialEq, PartialOrd)]
+pub enum CMakeCondition {
+    Parentheses {
+        // Parentheses ( and ).
+        value: Box<CMakeCondition>,
+    },
+    UnaryTest {
+        // Unary tests such as EXISTS, COMMAND, and DEFINED.
+        operator: String,
+        value: Box<CMakeCondition>,
+    },
+    BinaryTest {
+        // Binary tests such as EQUAL, LESS, LESS_EQUAL, GREATER, GREATER_EQUAL, STREQUAL, STRLESS, STRLESS_EQUAL, STRGREATER, STRGREATER_EQUAL, VERSION_EQUAL, VERSION_LESS, VERSION_LESS_EQUAL, VERSION_GREATER, VERSION_GREATER_EQUAL, PATH_EQUAL, and MATCHES.
+        operator: String,
+        left: Box<CMakeCondition>,
+        right: Box<CMakeCondition>,
+    },
+    UnaryLogicalOperator {
+        // Unary logical operator NOT.
+        operator: String,
+        value: Box<CMakeCondition>,
+    },
+    BinaryLogicalOperator {
+        // Binary logical operators AND and OR, from left to right, without any short-circuit.
+        operator: String,
+        left: Box<CMakeCondition>,
+        right: Box<CMakeCondition>,
+    },
+    Value(CMakeValue),
+}
+
+#[derive(Debug, PartialEq, PartialOrd)]
 pub struct CMakeCommand {
     pub name: String,
     pub args: Vec<CMakeValue>,
@@ -37,7 +68,7 @@ pub struct CMakeCommand {
 
 #[derive(Debug, PartialEq, PartialOrd)]
 pub struct CMakeIfBase {
-    pub condition: Vec<CMakeValue>,
+    pub condition: CMakeCondition,
     pub body: Vec<CMakeStatement>,
 }
 

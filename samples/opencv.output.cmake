@@ -221,10 +221,7 @@ endif()
 
 include(cmake/OpenCVMinDepVersions.cmake)
 
-if(
-  CMAKE_SYSTEM_NAME MATCHES WindowsPhone OR CMAKE_SYSTEM_NAME MATCHES
-  WindowsStore
-)
+if(CMAKE_SYSTEM_NAME MATCHES WindowsPhone OR CMAKE_SYSTEM_NAME MATCHES WindowsStore)
   cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
   #Required to resolve linker error issues due to incompatibility with CMake v3.0+ policies.
   #CMake fails to find _fseeko() which leads to subsequent linker error.
@@ -257,9 +254,7 @@ if(POLICY CMP0051)
   cmake_policy(SET CMP0051 NEW)
 endif()
 
-if(
-  POLICY CMP0054
-)# CMake 3.1: Only interpret if() arguments as variables or keywords when unquoted.
+if(POLICY CMP0054)# CMake 3.1: Only interpret if() arguments as variables or keywords when unquoted.
   cmake_policy(SET CMP0054 NEW)
 endif()
 
@@ -379,9 +374,7 @@ if(NOT OPENCV_SKIP_CMAKE_SYSTEM_FILE)
   endif()
 endif()
 
-if(
-  CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT
-)# https://cmake.org/cmake/help/latest/variable/CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT.html
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)# https://cmake.org/cmake/help/latest/variable/CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT.html
   if(NOT CMAKE_TOOLCHAIN_FILE)
     if(WIN32)
       set(
@@ -1778,10 +1771,7 @@ OCV_OPTION(
   "Enable compiler options for fast math optimizations on FP computations (not recommended)"
   OFF
 )
-if(
-  NOT IOS AND ( NOT ANDROID OR OPENCV_ANDROID_USE_LEGACY_FLAGS ) AND
-  CMAKE_CROSSCOMPILING
-)# Use CPU_BASELINE instead
+if(NOT IOS AND (NOT ANDROID OR OPENCV_ANDROID_USE_LEGACY_FLAGS) AND CMAKE_CROSSCOMPILING)# Use CPU_BASELINE instead
   OCV_OPTION(
     ENABLE_NEON "Enable NEON instructions" (
     NEON
@@ -1995,10 +1985,7 @@ if(DEFINED CMAKE_DEBUG_POSTFIX)
   set(OPENCV_DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
 endif()
 
-if(
-  ( INSTALL_CREATE_DISTRIB AND BUILD_SHARED_LIBS AND NOT DEFINED
-  BUILD_opencv_world ) OR APPLE_FRAMEWORK
-)
+if((INSTALL_CREATE_DISTRIB AND BUILD_SHARED_LIBS AND NOT DEFINED BUILD_opencv_world) OR APPLE_FRAMEWORK)
   set(BUILD_opencv_world ON CACHE INTERNAL "")
 endif()
 
@@ -2057,10 +2044,7 @@ ocv_cmake_hook(POST_COMPILER_OPTIONS)
 # ----------------------------------------------------------------------------
 if(UNIX OR MINGW)
   if(NOT APPLE_FRAMEWORK OR OPENCV_ENABLE_PKG_CONFIG)
-    if(
-      CMAKE_CROSSCOMPILING AND NOT DEFINED ENV{PKG_CONFIG_LIBDIR} AND NOT
-      DEFINED ENV{PKG_CONFIG_SYSROOT_DIR} AND NOT OPENCV_ENABLE_PKG_CONFIG
-    )
+    if(CMAKE_CROSSCOMPILING AND NOT DEFINED ENV{PKG_CONFIG_LIBDIR} AND NOT DEFINED ENV{PKG_CONFIG_SYSROOT_DIR} AND NOT OPENCV_ENABLE_PKG_CONFIG)
       if(NOT PkgConfig_FOUND)
         message(
           STATUS
@@ -2241,10 +2225,7 @@ if(ENABLE_FLAKE8 AND PYTHON_DEFAULT_AVAILABLE)
 endif()
 
 
-if(
-  ANDROID AND ANDROID_EXECUTABLE AND ANT_EXECUTABLE AND ( ANT_VERSION
-  VERSION_GREATER 1.7 ) AND ( ANDROID_TOOLS_Pkg_Revision GREATER 13 )
-)
+if(ANDROID AND ANDROID_EXECUTABLE AND ANT_EXECUTABLE AND (ANT_VERSION VERSION_GREATER 1.7) AND (ANDROID_TOOLS_Pkg_Revision GREATER 13))
   SET(CAN_BUILD_ANDROID_PROJECTS TRUE)
 else()
   SET(CAN_BUILD_ANDROID_PROJECTS FALSE)
@@ -2428,10 +2409,7 @@ if(BUILD_opencv_apps)
 endif()
 
 # examples
-if(
-  BUILD_EXAMPLES OR BUILD_ANDROID_EXAMPLES OR INSTALL_ANDROID_EXAMPLES OR
-  INSTALL_PYTHON_EXAMPLES OR INSTALL_C_EXAMPLES
-)
+if(BUILD_EXAMPLES OR BUILD_ANDROID_EXAMPLES OR INSTALL_ANDROID_EXAMPLES OR INSTALL_PYTHON_EXAMPLES OR INSTALL_C_EXAMPLES)
   add_subdirectory(samples)
 endif()
 
@@ -2741,10 +2719,7 @@ status("")
 status("  OpenCV modules:")
 set(OPENCV_MODULES_BUILD_ST "")
 foreach(the_module ${OPENCV_MODULES_BUILD})
-  if(
-    NOT OPENCV_MODULE_${the_module}_CLASS STREQUAL "INTERNAL" OR the_module
-    STREQUAL "opencv_ts"
-  )
+  if(NOT OPENCV_MODULE_${the_module}_CLASS STREQUAL "INTERNAL" OR the_module STREQUAL "opencv_ts")
     list(APPEND OPENCV_MODULES_BUILD_ST "${the_module}")
   endif()
 endforeach()
@@ -3322,9 +3297,7 @@ if(OPENCV_DISABLE_THREAD_SUPPORT)
     ""
     "Multi thread code explicitly disabled with OPENCV_DISABLE_THREAD_SUPPORT."
   )
-  if(
-    HAVE_PTHREADS_PF OR HAVE_HPX OR HAVE_OPENMP OR HAVE_GCD OR HAVE_CONCURRENCY
-  )
+  if(HAVE_PTHREADS_PF OR HAVE_HPX OR HAVE_OPENMP OR HAVE_GCD OR HAVE_CONCURRENCY)
     message(
       FATAL_ERROR
       "Not all parallel frameworks have been disabled (using ${parallel_status})."
@@ -3397,10 +3370,7 @@ if(WITH_HALIDE OR HAVE_HALIDE)
   )
 endif()
 
-if(
-  HAVE_OPENVINO OR ( WITH_OPENVINO AND NOT WITH_INF_ENGINE AND NOT
-  INF_ENGINE_TARGET )
-)
+if(HAVE_OPENVINO OR (WITH_OPENVINO AND NOT WITH_INF_ENGINE AND NOT INF_ENGINE_TARGET))
   status(
     "    OpenVINO:"
     TARGET openvino::runtime

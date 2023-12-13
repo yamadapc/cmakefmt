@@ -1,3 +1,4 @@
+use crate::parser::types::CMakeCondition;
 use nom::combinator::all_consuming;
 
 use super::*;
@@ -370,11 +371,13 @@ LANGUAGES CXX
 #[test]
 fn test_if_statements() {
     let input = r#"
-if(CMAKE_COMPILER_IS_GNUCXX)
+if (CMAKE_COMPILER_IS_GNUCXX)
 foo()
-elseif(MSVC)
-bar()                      
-endif()
+elseif(
+  MSVC
+  )
+bar()
+endif ()
     "#
     .trim();
 
@@ -384,9 +387,9 @@ endif()
         CMakeDocument {
             statements: vec![CMakeStatement::If(CMakeIfStatement {
                 base: CMakeIfBase {
-                    condition: vec![CMakeValue::ArgumentSpecifier(String::from(
+                    condition: CMakeCondition::Value(CMakeValue::ArgumentSpecifier(String::from(
                         "CMAKE_COMPILER_IS_GNUCXX"
-                    ))],
+                    ))),
                     body: vec![
                         CMakeStatement::Newline,
                         CMakeStatement::Command(CMakeCommand {
@@ -397,7 +400,9 @@ endif()
                     ],
                 },
                 else_ifs: vec![CMakeIfBase {
-                    condition: vec![CMakeValue::ArgumentSpecifier(String::from("MSVC"))],
+                    condition: CMakeCondition::Value(CMakeValue::ArgumentSpecifier(String::from(
+                        "MSVC"
+                    ))),
                     body: vec![
                         CMakeStatement::Newline,
                         CMakeStatement::Command(CMakeCommand {
@@ -421,7 +426,7 @@ fn test_parse_if_statement_with_single_condition() {
         result,
         CMakeStatement::If(CMakeIfStatement {
             base: CMakeIfBase {
-                condition: vec![CMakeValue::ArgumentSpecifier(String::from("ON"))],
+                condition: CMakeCondition::Value(CMakeValue::ArgumentSpecifier(String::from("ON"))),
                 body: vec![
                     CMakeStatement::Newline,
                     CMakeStatement::Command(CMakeCommand {
@@ -445,7 +450,9 @@ fn test_parse_if_statement_with_else() {
         result,
         CMakeStatement::If(CMakeIfStatement {
             base: CMakeIfBase {
-                condition: vec![CMakeValue::ArgumentSpecifier(String::from("OFF"))],
+                condition: CMakeCondition::Value(CMakeValue::ArgumentSpecifier(String::from(
+                    "OFF"
+                ))),
                 body: vec![
                     CMakeStatement::Newline,
                     CMakeStatement::Command(CMakeCommand {
@@ -476,12 +483,14 @@ fn test_parse_nested_if_statements() {
         result,
         CMakeStatement::If(CMakeIfStatement {
             base: CMakeIfBase {
-                condition: vec![CMakeValue::ArgumentSpecifier(String::from("ON"))],
+                condition: CMakeCondition::Value(CMakeValue::ArgumentSpecifier(String::from("ON"))),
                 body: vec![
                     CMakeStatement::Newline,
                     CMakeStatement::If(CMakeIfStatement {
                         base: CMakeIfBase {
-                            condition: vec![CMakeValue::ArgumentSpecifier(String::from("OFF"))],
+                            condition: CMakeCondition::Value(CMakeValue::ArgumentSpecifier(
+                                String::from("OFF")
+                            )),
                             body: vec![
                                 CMakeStatement::Newline,
                                 CMakeStatement::Command(CMakeCommand {
@@ -611,7 +620,9 @@ fn test_parse_else_with_args() {
         result,
         CMakeStatement::If(CMakeIfStatement {
             base: CMakeIfBase {
-                condition: vec![CMakeValue::ArgumentSpecifier(String::from("OFF"))],
+                condition: CMakeCondition::Value(CMakeValue::ArgumentSpecifier(String::from(
+                    "OFF"
+                ))),
                 body: vec![
                     CMakeStatement::Newline,
                     CMakeStatement::Command(CMakeCommand {

@@ -203,10 +203,7 @@ else()
     -Wl,-z,noexecstack
   )
   
-  if(
-    CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_C_COMPILER_ID STREQUAL
-    "AppleClang"
-  )
+  if(CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_C_COMPILER_ID STREQUAL "AppleClang")
     target_compile_options(
       ${PROJECT_NAME}
       PRIVATE -Wno-unknown-warning-option -Wshorten-64-to-32

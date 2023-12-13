@@ -168,9 +168,9 @@ fn test_print_if_statement() {
         let document = CMakeDocument {
             statements: vec![CMakeStatement::If(CMakeIfStatement {
                 base: CMakeIfBase {
-                    condition: vec![CMakeValue::ArgumentSpecifier(String::from(
+                    condition: CMakeCondition::Value(CMakeValue::ArgumentSpecifier(String::from(
                         "CMAKE_COMPILER_IS_GNUCXX",
-                    ))],
+                    ))),
                     body: vec![
                         CMakeStatement::Newline,
                         CMakeStatement::Command(CMakeCommand {
@@ -181,7 +181,9 @@ fn test_print_if_statement() {
                     ],
                 },
                 else_ifs: vec![CMakeIfBase {
-                    condition: vec![CMakeValue::ArgumentSpecifier(String::from("MSVC"))],
+                    condition: CMakeCondition::Value(CMakeValue::ArgumentSpecifier(String::from(
+                        "MSVC",
+                    ))),
                     body: vec![
                         CMakeStatement::Newline,
                         CMakeStatement::Command(CMakeCommand {
@@ -217,12 +219,16 @@ fn test_print_nested_if_statement() {
         let document = CMakeDocument {
             statements: vec![CMakeStatement::If(CMakeIfStatement {
                 base: CMakeIfBase {
-                    condition: vec![CMakeValue::ArgumentSpecifier(String::from("a"))],
+                    condition: CMakeCondition::Value(CMakeValue::ArgumentSpecifier(String::from(
+                        "a",
+                    ))),
                     body: vec![
                         CMakeStatement::Newline,
                         CMakeStatement::If(CMakeIfStatement {
                             base: CMakeIfBase {
-                                condition: vec![CMakeValue::ArgumentSpecifier(String::from("b"))],
+                                condition: CMakeCondition::Value(CMakeValue::ArgumentSpecifier(
+                                    String::from("b"),
+                                )),
                                 body: vec![
                                     CMakeStatement::Newline,
                                     CMakeStatement::Command(CMakeCommand {

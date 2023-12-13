@@ -23,8 +23,8 @@
 use pretty::RcDoc;
 
 use crate::parser::types::{
-    CMakeCommand, CMakeDocument, CMakeForEachStatement, CMakeFunctionStatement, CMakeIfStatement,
-    CMakeMacroStatement, CMakeStatement, CMakeValue,
+    CMakeCommand, CMakeCondition, CMakeDocument, CMakeForEachStatement, CMakeFunctionStatement,
+    CMakeIfStatement, CMakeMacroStatement, CMakeStatement, CMakeValue,
 };
 
 impl CMakeValue {
@@ -101,6 +101,45 @@ fn print_args_to_vec(args: &[CMakeValue], grouping_disabled: bool) -> Vec<RcDoc<
     }
 }
 
+impl CMakeCondition {
+    fn print(&self) -> RcDoc<'static> {
+        match self {
+            CMakeCondition::Parentheses { value } => RcDoc::text("(")
+                .append(value.print())
+                .append(RcDoc::text(")")),
+            CMakeCondition::UnaryTest { value, operator } => RcDoc::text(operator.to_string())
+                .append(RcDoc::space())
+                .append(value.print()),
+            CMakeCondition::BinaryTest {
+                operator,
+                left,
+                right,
+            } => left
+                .print()
+                .append(RcDoc::space())
+                .append(RcDoc::text(operator.to_string()))
+                .append(RcDoc::space())
+                .append(right.print()),
+            CMakeCondition::UnaryLogicalOperator { value, operator } => {
+                RcDoc::text(operator.to_string())
+                    .append(RcDoc::space())
+                    .append(value.print())
+            }
+            CMakeCondition::BinaryLogicalOperator {
+                operator,
+                left,
+                right,
+            } => left
+                .print()
+                .append(RcDoc::space())
+                .append(RcDoc::text(operator.to_string()))
+                .append(RcDoc::space())
+                .append(right.print()),
+            CMakeCondition::Value(value) => value.to_doc(),
+        }
+    }
+}
+
 impl CMakeIfStatement {
     fn print(&self) -> RcDoc<'static> {
         let make_body = |body: &Vec<CMakeStatement>| {
@@ -109,14 +148,14 @@ impl CMakeIfStatement {
                 .group()
         };
         let mut output = RcDoc::text("if(")
-            .append(print_args(&self.base.condition, true))
+            .append(self.base.condition.print())
             .append(RcDoc::text(")"))
             .append(make_body(&self.base.body));
 
         for else_if in &self.else_ifs {
             output = output
                 .append("elseif(")
-                .append(print_args(&else_if.condition, true))
+                .append(else_if.condition.print())
                 .append(RcDoc::text(")"))
                 .append(make_body(&else_if.body));
         }
