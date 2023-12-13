@@ -1,3 +1,7 @@
+# 0.1.7 (13-12-2023)
+
+* Add in-place flag
+
 # 0.1.6 (13-12-2023)
 
 * Improve quality of formatting boolean expressions
