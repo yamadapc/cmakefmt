@@ -162,7 +162,7 @@ mod test {
         let result = cmake_condition(input).unwrap().1;
         assert_eq!(
             result,
-            CMakeCondition::UnaryLogicalOperator {
+            CMakeCondition::UnaryTest {
                 operator: "EXISTS".to_string(),
                 value: Box::new(CMakeCondition::Value(CMakeValue::StringLiteral(
                     "/usr/include".to_string()
@@ -198,7 +198,7 @@ mod test {
             CMakeCondition::UnaryLogicalOperator {
                 operator: "NOT".to_string(),
                 value: Box::new(CMakeCondition::Parentheses {
-                    value: Box::new(CMakeCondition::UnaryLogicalOperator {
+                    value: Box::new(CMakeCondition::UnaryTest {
                         operator: "EXISTS".to_string(),
                         value: Box::new(CMakeCondition::Value(CMakeValue::StringLiteral(
                             "/usr/include".to_string()
