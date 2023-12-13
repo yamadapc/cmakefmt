@@ -1,3 +1,4 @@
+use clap::{arg, command, Arg, ArgAction};
 // The MIT License (MIT)
 //
 // Copyright (c) 2023 Pedro Tacla Yamada
@@ -26,18 +27,29 @@ mod parser;
 mod pretty_printer;
 
 fn main() {
-    let target = std::env::args().nth(1);
-    if target.is_none() {
-        eprintln!("Usage: cmakefmt <target>");
-        std::process::exit(1);
-    }
+    let matches = command!() // requires `cargo` feature
+        .arg(
+            Arg::new("inplace")
+                .short('i')
+                .long("in-place")
+                .help("Write to the input file after formatting")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(arg!([file] "Target file").required(true))
+        .get_matches();
 
-    let file_contents = std::fs::read_to_string(target.unwrap()).expect("Failed to open file");
+    let input_file: &String = matches.get_one("file").expect("No input file provided");
+    let file_contents = std::fs::read_to_string(input_file).expect("Failed to open file");
     match all_consuming(parser::cmake_parser)(&file_contents) {
         Ok((_, contents)) => {
+            let mut writer: Box<dyn std::io::Write> = if matches.get_flag("inplace") {
+                Box::new(std::fs::File::create(input_file).expect("Failed to open file"))
+            } else {
+                Box::new(std::io::stdout())
+            };
             contents
                 .print()
-                .render(80, &mut std::io::stdout())
+                .render(80, &mut writer)
                 .expect("Failed to format file");
         }
         Err(nom::Err::Error(err)) => {
