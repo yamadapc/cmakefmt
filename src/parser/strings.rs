@@ -66,6 +66,18 @@ where
     map_opt(parse_u32, std::char::from_u32)(input)
 }
 
+fn parse_cmake_escape<'a, E>(input: &'a str) -> IResult<&'a str, &'a str, E>
+where
+    E: ParseError<&'a str> + FromExternalError<&'a str, std::num::ParseIntError>,
+{
+    preceded(
+        char('\\'),
+        // `alt` tries each parser in sequence, returning the result of
+        // the first successful match
+        alt((value("\\$", char('$')),)),
+    )(input)
+}
+
 /// Parse an escaped character: \n, \t, \r, \u{00AC}, etc.
 fn parse_escaped_char<'a, E>(input: &'a str) -> IResult<&'a str, char, E>
 where
@@ -120,6 +132,8 @@ fn parse_literal<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str,
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StringFragment<'a> {
     Literal(&'a str),
+    // Especial escapes for CMake strings
+    EscapedCMake(&'a str),
     EscapedChar(char),
     EscapedWS,
 }
@@ -134,6 +148,7 @@ where
         // The `map` combinator runs a parser, then applies a function to the output
         // of that parser.
         map(parse_literal, StringFragment::Literal),
+        map(parse_cmake_escape, StringFragment::EscapedCMake),
         map(parse_escaped_char, StringFragment::EscapedChar),
         value(StringFragment::EscapedWS, parse_escaped_whitespace),
     ))(input)
@@ -157,6 +172,7 @@ where
         |mut string, fragment| {
             match fragment {
                 StringFragment::Literal(s) => string.push_str(s),
+                StringFragment::EscapedCMake(s) => string.push_str(s),
                 StringFragment::EscapedChar(c) => string.push(c),
                 StringFragment::EscapedWS => {}
             }
@@ -169,4 +185,25 @@ where
     // `delimited` with a looping parser (like fold_many0), be sure that the
     // loop won't accidentally match your closing delimiter!
     delimited(char('"'), build_string, char('"'))(input)
+}
+
+#[cfg(test)]
+mod test {
+    use crate::parser::strings::parse_string;
+    use crate::parser::ErrorType;
+
+    #[test]
+    fn test_parse_dollar_escapes() {
+        let input = r#"
+"EXECUTE_PROCESS(\"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/samples/${sample_dir}\"
+)"
+        "#
+        .trim();
+
+        let result = parse_string::<ErrorType<&str>>(input).unwrap();
+        assert_eq!(
+            result.1,
+            "EXECUTE_PROCESS(\"\\$ENV{DESTDIR}\\${CMAKE_INSTALL_PREFIX}/samples/${sample_dir}\"\n)"
+        );
+    }
 }

@@ -27,12 +27,12 @@ use nom_supreme::error::{BaseErrorKind, ErrorTree, StackContext};
 use nom_supreme::final_parser::Location;
 
 fn print_alternative(file_path: &str, input_file: &str, errors: &[ErrorTree<Location>]) {
-    println!("tried alternatives:\n");
+    eprintln!("tried alternatives:\n");
     for (i, error) in errors.iter().enumerate() {
-        println!("======================================================================");
-        println!("alternative {}:", i + 1);
+        eprintln!("======================================================================");
+        eprintln!("alternative {}:", i + 1);
         print_error(file_path, input_file, &error);
-        println!();
+        eprintln!();
     }
 }
 
@@ -43,7 +43,7 @@ fn print_stack(
     contexts: &[(Location, StackContext<&str>)],
 ) {
     if contexts.len() > 1 {
-        println!(
+        eprintln!(
             "base error for STACK len={}: ===========================",
             contexts.len()
         );
@@ -65,7 +65,7 @@ fn print_stack(
                 print_message_at_location(file_path, input_file, location, &message);
             }
         }
-        println!("  ---> stack error: {}:{}", location.line, location.column);
+        eprintln!("  ---> stack error: {}:{}", location.line, location.column);
     }
 }
 
@@ -86,10 +86,10 @@ fn print_message_at_location(
         0
     };
     let lines = lines.enumerate().skip(start).map(|(i, l)| (i + 1, l));
-    println!("  ---> {}:{}:{}", file_path, location.line, location.column);
-    println!("{}", "      | ".bright_purple());
+    eprintln!("  ---> {}:{}:{}", file_path, location.line, location.column);
+    eprintln!("{}", "      | ".bright_purple());
     for (line_num, line) in lines.take(6) {
-        println!(
+        eprintln!(
             "{} {}",
             format!("{:05} |", line_num.to_string()).bright_purple(),
             if line_num == location.line {
@@ -99,17 +99,17 @@ fn print_message_at_location(
             }
         );
         if line_num == location.line {
-            print!("{}", "      | ".bright_purple());
+            eprint!("{}", "      | ".bright_purple());
             for _ in 0..location.column - 1 {
-                print!(" ");
+                eprint!(" ");
             }
-            print!("{}", "^".yellow());
-            print!(" ");
-            print!("{} ({}:{})", message, location.line, location.column);
-            print!("\n");
+            eprint!("{}", "^".yellow());
+            eprint!(" ");
+            eprint!("{} ({}:{})", message, location.line, location.column);
+            eprint!("\n");
         }
     }
-    println!("{}", "      | ".bright_purple());
+    eprintln!("{}", "      | ".bright_purple());
 }
 
 pub fn print_error(file_path: &str, input_file: &str, error_tree: &ErrorTree<Location>) {
