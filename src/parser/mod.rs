@@ -194,7 +194,7 @@ fn cmake_else_if_block(input: &str) -> IResult<&str, CMakeIfBase> {
         cmake_condition,
         multispace0,
         tag(")"),
-        many0(delimited(space0, cmake_statement, space0)),
+        parse_statement_list(),
     ));
     let mut inner = map(base, |(_, _, _, _, condition, _, _, body)| CMakeIfBase {
         condition,
@@ -214,10 +214,7 @@ fn cmake_if_group(input: &str) -> IResult<&str, CMakeStatement> {
             condition
         }),
     );
-    let parse_if_statements = context(
-        "parse_if_statements",
-        many0(delimited(space0, cmake_statement, space0)),
-    );
+    let parse_if_statements = context("parse_if_statements", parse_statement_list());
     let parse_else_if_blocks = context(
         "parse_else_if_blocks",
         many0(delimited(space0, cmake_else_if_block, space0)),
@@ -226,10 +223,7 @@ fn cmake_if_group(input: &str) -> IResult<&str, CMakeStatement> {
         "parse_else_block",
         opt(delimited(
             space0,
-            tuple((
-                skip_empty_command("else"),
-                many0(delimited(space0, cmake_statement, space0)),
-            )),
+            tuple((skip_empty_command("else"), parse_statement_list())),
             space0,
         )),
     );
@@ -257,15 +251,18 @@ fn cmake_if_group(input: &str) -> IResult<&str, CMakeStatement> {
     parse_if_statement(input)
 }
 
+fn parse_statement_list() -> impl FnMut(&str) -> IResult<&str, Vec<CMakeStatement>> {
+    |input| many0(delimited(space0, cmake_statement, space0))(input)
+}
+
 fn cmake_clause_body_block<'a>(
     keyword: &'a str,
 ) -> impl FnMut(&str) -> IResult<&str, CMakeCommandGroup> + 'a {
     let keyword_end = format!("end{}", keyword);
     move |input| {
         let prefix = tuple((tag_no_case(keyword), space0));
-        let body = many0(delimited(space0, cmake_statement, space0));
-        let end_clause = skip_empty_command(&keyword_end);
-        let base = tuple((prefix, cmake_args, body, end_clause));
+        let body = parse_statement_list();
+        let base = tuple((prefix, cmake_args, body, skip_empty_command(&keyword_end)));
 
         let mut parser = map(base, |(_, clause, body, end_clause)| CMakeCommandGroup {
             clause,

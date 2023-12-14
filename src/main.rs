@@ -20,110 +20,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-use std::error::Error;
-
 use clap::{arg, command, Arg, ArgAction};
-use colored::{ColoredString, Colorize};
-use nom_supreme::error::{BaseErrorKind, ErrorTree, StackContext};
-use nom_supreme::final_parser::{final_parser, Location};
+use nom_supreme::final_parser::final_parser;
 
+mod errors;
 mod parser;
 mod pretty_printer;
-
-fn print_alternative(input_file: &str, errors: &[ErrorTree<Location>]) {
-    println!("tried alternatives:\n");
-    for (i, error) in errors.iter().enumerate() {
-        println!("======================================================================");
-        println!("alternative {}:", i + 1);
-        print_error(input_file, &error);
-        println!();
-    }
-}
-
-fn print_stack(
-    input_file: &str,
-    base: &ErrorTree<Location>,
-    contexts: &[(Location, StackContext<&str>)],
-) {
-    if contexts.len() > 1 {
-        println!(
-            "base error for STACK len={}: ===========================",
-            contexts.len()
-        );
-    }
-    for context in contexts.iter() {
-        let (location, context) = context;
-        match context {
-            StackContext::Kind(err) => {
-                println!("  ---> error_kind: {:?}", err);
-            }
-            StackContext::Context(context) => {
-                println!(
-                    "{}: {}",
-                    format!("  ---> context").bright_white(),
-                    context.bright_cyan().bold()
-                );
-            }
-        }
-        println!("  ---> stack error: {}:{}", location.line, location.column);
-    }
-    print_error(input_file, base);
-}
-
-fn format_error(error: &BaseErrorKind<&str, Box<dyn Error + Send + Sync>>) -> ColoredString {
-    format!("{}", error).bright_yellow()
-}
-
-fn print_base(
-    input_file: &str,
-    location: &Location,
-    error: &BaseErrorKind<&str, Box<dyn Error + Send + Sync>>,
-) {
-    let lines = input_file.lines();
-    let start = location.line - 3;
-    let lines = lines.enumerate().skip(start).map(|(i, l)| (i + 1, l));
-    for (line_num, line) in lines.take(6) {
-        println!(
-            "{} {}",
-            format!("{:05} |", line_num.to_string()).bright_purple(),
-            if line_num == location.line {
-                line.bright_red()
-            } else {
-                line.white()
-            }
-        );
-        if line_num == location.line {
-            print!("{}", "      | ".bright_purple());
-            for _ in 0..location.column - 1 {
-                print!(" ");
-            }
-            print!("{}", "^".yellow());
-            print!(" ");
-            print!(
-                "{}: {} ({}:{})",
-                "error".yellow(),
-                format_error(error),
-                location.line,
-                location.column
-            );
-            print!("\n");
-        }
-    }
-}
-
-fn print_error(input_file: &str, error_tree: &ErrorTree<Location>) {
-    match error_tree {
-        ErrorTree::Base { location, kind } => {
-            print_base(input_file, location, kind);
-        }
-        ErrorTree::Stack { base, contexts } => {
-            print_stack(input_file, &*base, contexts);
-        }
-        ErrorTree::Alt(errors) => {
-            print_alternative(input_file, errors);
-        }
-    }
-}
 
 fn main() {
     let matches = command!() // requires `cargo` feature
@@ -166,7 +68,7 @@ fn main() {
                 .expect("Failed to format file");
         }
         Err(err) => {
-            print_error(file_contents.as_str(), &err);
+            errors::print_error(input_file, file_contents.as_str(), &err);
             std::process::exit(1);
         }
     };
