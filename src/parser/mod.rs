@@ -15,8 +15,8 @@ use nom::{
 };
 
 use crate::parser::types::{
-    CMakeCommand, CMakeDocument, CMakeForEachStatement, CMakeFunctionStatement, CMakeIfBase,
-    CMakeIfStatement, CMakeMacroStatement, CMakeStatement, CMakeValue,
+    CMakeCommand, CMakeCommandGroup, CMakeDocument, CMakeForEachStatement, CMakeFunctionStatement,
+    CMakeIfBase, CMakeIfStatement, CMakeMacroStatement, CMakeStatement, CMakeValue,
 };
 
 mod strings;
@@ -176,49 +176,34 @@ fn cmake_if_block(input: &str) -> IResult<&str, CMakeStatement> {
 
 fn cmake_clause_body_block<'a>(
     keyword: &'a str,
-) -> impl Fn(&str) -> IResult<&str, (Vec<CMakeValue>, Vec<CMakeStatement>)> + 'a {
+) -> impl Fn(&str) -> IResult<&str, CMakeCommandGroup> + 'a {
     move |input| {
         let (input, _) = tag(keyword)(input)?;
         let (input, _) = space0(input)?;
-        let (input, condition) = cmake_args(input)?;
+        let (input, clause) = cmake_args(input)?;
         let (input, body) = many0(delimited(space0, cmake_statement, space0))(input)?;
         let (input, _) = skip_empty_command(&format!("end{}", keyword))(input)?;
 
-        Ok((input, (condition, body)))
+        Ok((input, CMakeCommandGroup { clause, body }))
     }
 }
 
 fn cmake_foreach_block(input: &str) -> IResult<&str, CMakeStatement> {
-    let (input, (condition, body)) = cmake_clause_body_block("foreach")(input)?;
-    Ok((
-        input,
-        CMakeStatement::For(CMakeForEachStatement {
-            clause: condition,
-            body,
-        }),
-    ))
+    let (input, group) = cmake_clause_body_block("foreach")(input)?;
+    Ok((input, CMakeStatement::For(CMakeForEachStatement { group })))
 }
 
 fn cmake_function_block(input: &str) -> IResult<&str, CMakeStatement> {
-    let (input, (condition, body)) = cmake_clause_body_block("function")(input)?;
+    let (input, group) = cmake_clause_body_block("function")(input)?;
     Ok((
         input,
-        CMakeStatement::Function(CMakeFunctionStatement {
-            clause: condition,
-            body,
-        }),
+        CMakeStatement::Function(CMakeFunctionStatement { group }),
     ))
 }
 
 fn cmake_macro_block(input: &str) -> IResult<&str, CMakeStatement> {
-    let (input, (condition, body)) = cmake_clause_body_block("macro")(input)?;
-    Ok((
-        input,
-        CMakeStatement::Macro(CMakeMacroStatement {
-            clause: condition,
-            body,
-        }),
-    ))
+    let (input, group) = cmake_clause_body_block("macro")(input)?;
+    Ok((input, CMakeStatement::Macro(CMakeMacroStatement { group })))
 }
 
 fn skip_empty_command<'a>(name: &'a str) -> impl Fn(&str) -> IResult<&str, ()> + 'a {

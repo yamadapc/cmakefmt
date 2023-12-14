@@ -80,21 +80,24 @@ pub struct CMakeIfStatement {
 }
 
 #[derive(Debug, PartialEq, PartialOrd)]
-pub struct CMakeForEachStatement {
+pub struct CMakeCommandGroup {
     pub clause: Vec<CMakeValue>,
     pub body: Vec<CMakeStatement>,
+}
+
+#[derive(Debug, PartialEq, PartialOrd)]
+pub struct CMakeForEachStatement {
+    pub group: CMakeCommandGroup,
 }
 
 #[derive(Debug, PartialEq, PartialOrd)]
 pub struct CMakeFunctionStatement {
-    pub clause: Vec<CMakeValue>,
-    pub body: Vec<CMakeStatement>,
+    pub group: CMakeCommandGroup,
 }
 
 #[derive(Debug, PartialEq, PartialOrd)]
 pub struct CMakeMacroStatement {
-    pub clause: Vec<CMakeValue>,
-    pub body: Vec<CMakeStatement>,
+    pub group: CMakeCommandGroup,
 }
 
 #[derive(Debug, PartialEq, PartialOrd)]

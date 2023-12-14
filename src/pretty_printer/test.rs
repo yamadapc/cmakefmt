@@ -277,20 +277,22 @@ endif()
 fn test_preseving_newlines() {
     let document = CMakeDocument {
         statements: vec![CMakeStatement::Function(CMakeFunctionStatement {
-            clause: vec![CMakeValue::StringLiteral(String::from("foo"))],
-            body: vec![
-                CMakeStatement::Newline,
-                CMakeStatement::Command(CMakeCommand {
-                    name: String::from("bar"),
-                    args: vec![
-                        // TODO we don't want these newlines
-                        CMakeValue::StringLiteral(String::from("x")),
-                        CMakeValue::StringLiteral(String::from("y")),
-                        CMakeValue::StringLiteral(String::from("z")),
-                    ],
-                }),
-                CMakeStatement::Newline,
-            ],
+            group: CMakeCommandGroup {
+                clause: vec![CMakeValue::StringLiteral(String::from("foo"))],
+                body: vec![
+                    CMakeStatement::Newline,
+                    CMakeStatement::Command(CMakeCommand {
+                        name: String::from("bar"),
+                        args: vec![
+                            // TODO we don't want these newlines
+                            CMakeValue::StringLiteral(String::from("x")),
+                            CMakeValue::StringLiteral(String::from("y")),
+                            CMakeValue::StringLiteral(String::from("z")),
+                        ],
+                    }),
+                    CMakeStatement::Newline,
+                ],
+            },
         })],
     };
     let mut vec_writer = Vec::new();

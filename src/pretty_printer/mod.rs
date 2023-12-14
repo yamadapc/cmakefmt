@@ -23,8 +23,8 @@
 use pretty::RcDoc;
 
 use crate::parser::types::{
-    CMakeCommand, CMakeCondition, CMakeDocument, CMakeForEachStatement, CMakeFunctionStatement,
-    CMakeIfStatement, CMakeMacroStatement, CMakeStatement, CMakeValue,
+    CMakeCommand, CMakeCommandGroup, CMakeCondition, CMakeDocument, CMakeForEachStatement,
+    CMakeFunctionStatement, CMakeIfStatement, CMakeMacroStatement, CMakeStatement, CMakeValue,
 };
 
 impl CMakeValue {
@@ -172,6 +172,12 @@ impl CMakeIfStatement {
     }
 }
 
+impl CMakeCommandGroup {
+    fn print(&self, name: &str) -> RcDoc<'static> {
+        print_clause_body(name, &self.clause, &self.body)
+    }
+}
+
 fn print_clause_body(
     keyword: &str,
     clause: &[CMakeValue],
@@ -194,19 +200,19 @@ fn print_clause_body(
 
 impl CMakeForEachStatement {
     fn print(&self) -> RcDoc<'static> {
-        print_clause_body("foreach", &self.clause, &self.body)
+        self.group.print("foreach")
     }
 }
 
 impl CMakeFunctionStatement {
     fn print(&self) -> RcDoc<'static> {
-        print_clause_body("function", &self.clause, &self.body)
+        self.group.print("function")
     }
 }
 
 impl CMakeMacroStatement {
     fn print(&self) -> RcDoc<'static> {
-        print_clause_body("macro", &self.clause, &self.body)
+        self.group.print("macro")
     }
 }
 

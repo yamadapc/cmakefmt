@@ -20,6 +20,7 @@ fn cmake_condition_parentheses(input: &str) -> IResult<&str, CMakeCondition> {
 fn cmake_condition_unary_test(input: &str) -> IResult<&str, CMakeCondition> {
     let (input, operator) = alt((
         tag("EXISTS"),
+        tag("IS_ABSOLUTE"),
         tag("COMMAND"),
         tag("DEFINED"),
         tag("POLICY"),

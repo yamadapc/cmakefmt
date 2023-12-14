@@ -586,11 +586,13 @@ endforeach ()
     assert_eq!(
         result,
         CMakeStatement::For(CMakeForEachStatement {
-            clause: vec![
-                CMakeValue::StringLiteral(String::from("line")),
-                CMakeValue::StringLiteral(String::from("${config_ac_contents}"))
-            ],
-            body: vec![CMakeStatement::Newline]
+            group: CMakeCommandGroup {
+                clause: vec![
+                    CMakeValue::StringLiteral(String::from("line")),
+                    CMakeValue::StringLiteral(String::from("${config_ac_contents}"))
+                ],
+                body: vec![CMakeStatement::Newline]
+            }
         }),
     );
 }
@@ -606,8 +608,10 @@ endfunction ()
     assert_eq!(
         result,
         CMakeStatement::Function(CMakeFunctionStatement {
-            clause: vec![CMakeValue::StringLiteral(String::from("foo")),],
-            body: vec![CMakeStatement::Newline]
+            group: CMakeCommandGroup {
+                clause: vec![CMakeValue::StringLiteral(String::from("foo")),],
+                body: vec![CMakeStatement::Newline]
+            }
         }),
     );
 }
@@ -656,8 +660,10 @@ endmacro ()
     assert_eq!(
         result,
         CMakeStatement::Macro(CMakeMacroStatement {
-            clause: vec![CMakeValue::StringLiteral(String::from("foo")),],
-            body: vec![CMakeStatement::Newline]
+            group: CMakeCommandGroup {
+                clause: vec![CMakeValue::StringLiteral(String::from("foo")),],
+                body: vec![CMakeStatement::Newline]
+            }
         }),
     );
 }
@@ -680,20 +686,22 @@ endfunction()
         result,
         CMakeDocument {
             statements: vec![CMakeStatement::Function(CMakeFunctionStatement {
-                clause: vec![CMakeValue::StringLiteral(String::from("foo")),],
-                body: vec![
-                    CMakeStatement::Newline,
-                    CMakeStatement::Command(CMakeCommand {
-                        name: String::from("bar"),
-                        args: vec![
-                            // TODO we don't want these newlines
-                            CMakeValue::StringLiteral(String::from("x")),
-                            CMakeValue::StringLiteral(String::from("y")),
-                            CMakeValue::StringLiteral(String::from("z")),
-                        ],
-                    }),
-                    CMakeStatement::Newline,
-                ]
+                group: CMakeCommandGroup {
+                    clause: vec![CMakeValue::StringLiteral(String::from("foo")),],
+                    body: vec![
+                        CMakeStatement::Newline,
+                        CMakeStatement::Command(CMakeCommand {
+                            name: String::from("bar"),
+                            args: vec![
+                                // TODO we don't want these newlines
+                                CMakeValue::StringLiteral(String::from("x")),
+                                CMakeValue::StringLiteral(String::from("y")),
+                                CMakeValue::StringLiteral(String::from("z")),
+                            ],
+                        }),
+                        CMakeStatement::Newline,
+                    ]
+                }
             })],
         }
     )
