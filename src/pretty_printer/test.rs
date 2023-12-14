@@ -292,6 +292,7 @@ fn test_preseving_newlines() {
                     }),
                     CMakeStatement::Newline,
                 ],
+                end_clause: vec![],
             },
         })],
     };

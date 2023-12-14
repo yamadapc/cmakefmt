@@ -22,47 +22,54 @@
 
 use nom::branch::alt;
 use nom::bytes::complete::tag;
-use nom::error::{ParseError, VerboseError};
+use nom::combinator::map;
+use nom::error::ParseError;
+use nom::error::{context, ErrorKind};
+use nom::sequence::tuple;
+use std::fmt::Debug;
 
 use crate::parser::types::CMakeCondition;
-use crate::parser::{cmake_value, IResult};
+use crate::parser::{cmake_value, ErrorType, IResult};
 
 fn cmake_condition_parentheses(input: &str) -> IResult<&str, CMakeCondition> {
-    let (input, _) = nom::character::complete::char('(')(input)?;
-    let (input, condition) = cmake_condition(input)?;
-    let (input, _) = nom::character::complete::char(')')(input)?;
-    Ok((
-        input,
-        CMakeCondition::Parentheses {
-            value: Box::new(condition),
-        },
-    ))
+    let base = tuple((
+        nom::character::complete::char('('),
+        cmake_condition,
+        nom::character::complete::char(')'),
+    ));
+    let inner = map(base, |(_, condition, _)| CMakeCondition::Parentheses {
+        value: Box::new(condition),
+    });
+
+    context("condition_parentheses", inner)(input)
 }
 
 fn cmake_condition_unary_test(input: &str) -> IResult<&str, CMakeCondition> {
-    let (input, operator) = alt((
+    let operator = alt((
         tag("EXISTS"),
         tag("IS_ABSOLUTE"),
+        tag("IS_DIRECTORY"),
+        tag("IS_SYMLINK"),
         tag("COMMAND"),
         tag("DEFINED"),
         tag("POLICY"),
         tag("TARGET"),
-    ))(input)?;
-    let (input, _) = nom::character::complete::multispace1(input)?;
-    let (input, value) = cmake_condition(input)?;
-    Ok((
-        input,
-        CMakeCondition::UnaryTest {
-            operator: operator.to_string(),
-            value: Box::new(value),
-        },
-    ))
+    ));
+    let base = tuple((
+        operator,
+        nom::character::complete::multispace1,
+        cmake_condition,
+    ));
+    let inner = map(base, |(operator, _, value)| CMakeCondition::UnaryTest {
+        operator: operator.to_string(),
+        value: Box::new(value),
+    });
+
+    context("condition_unary_test", inner)(input)
 }
 
 fn cmake_condition_binary_test(input: &str) -> IResult<&str, CMakeCondition> {
-    let (input, left) = cmake_condition_value(input)?;
-    let (input, _) = nom::character::complete::multispace1(input)?;
-    let (input, operator) = alt((
+    let operator = alt((
         tag("EQUAL"),
         tag("LESS"),
         tag("LESS_EQUAL"),
@@ -80,58 +87,73 @@ fn cmake_condition_binary_test(input: &str) -> IResult<&str, CMakeCondition> {
         tag("VERSION_GREATER_EQUAL"),
         tag("PATH_EQUAL"),
         tag("MATCHES"),
-    ))(input)?;
-    let (input, _) = nom::character::complete::multispace1(input)?;
-    let (input, right) = cmake_condition_value(input)?;
-    Ok((
-        input,
+        tag("INLIST"),
+        tag("IN_LIST"),
+        tag("NOTINLIST"),
+        tag("NOT_IN_LIST"),
+    ));
+    let base = tuple((
+        cmake_condition_value,
+        nom::character::complete::multispace1,
+        operator,
+        nom::character::complete::multispace1,
+        cmake_condition_value,
+    ));
+    let inner = map(base, |(left, _, operator, _, right)| {
         CMakeCondition::BinaryTest {
             operator: operator.to_string(),
             left: Box::new(left),
             right: Box::new(right),
-        },
-    ))
+        }
+    });
+
+    context("condition_binary_test", inner)(input)
 }
 
 fn cmake_condition_value(input: &str) -> IResult<&str, CMakeCondition> {
-    let (input, value) = cmake_value(input)?;
-    Ok((input, CMakeCondition::Value(value)))
+    let inner = map(cmake_value, CMakeCondition::Value);
+    context("condition_value", inner)(input)
 }
 
 fn cmake_condition_unary_logical_operator(input: &str) -> IResult<&str, CMakeCondition> {
-    let (input, operator) = tag("NOT")(input)?;
-    let (input, _) = nom::character::complete::multispace1(input)?;
-    let (input, value) = cmake_condition(input)?;
-    Ok((
-        input,
+    let base = tuple((
+        tag("NOT"),
+        nom::character::complete::multispace1,
+        cmake_condition,
+    ));
+    let inner = map(base, |(operator, _, value)| {
         CMakeCondition::UnaryLogicalOperator {
             operator: operator.to_string(),
             value: Box::new(value),
-        },
-    ))
+        }
+    });
+
+    context("condition_unary_logical_operator", inner)(input)
 }
 
 fn cmake_condition_binary_logical_operator(input: &str) -> IResult<&str, CMakeCondition> {
-    let (input, left) =
-        cmake_condition_inner(input, Some(cmake_condition_binary_logical_operator))?;
-    let (input, _) = nom::character::complete::multispace1(input)?;
-    let (input, operator) = alt((tag("AND"), tag("OR")))(input)?;
-    let (input, _) = nom::character::complete::multispace1(input)?;
-    let (input, right) = cmake_condition(input)?;
-    Ok((
-        input,
+    let parse_operator = alt((tag("AND"), tag("OR")));
+    let parse_base = tuple((
+        cmake_condition_inner(Some(cmake_condition_binary_logical_operator)),
+        nom::character::complete::multispace1,
+        parse_operator,
+        nom::character::complete::multispace1,
+        cmake_condition,
+    ));
+    let inner = map(parse_base, |(left, _, operator, _, right)| {
         CMakeCondition::BinaryLogicalOperator {
             operator: operator.to_string(),
             left: Box::new(left),
             right: Box::new(right),
-        },
-    ))
+        }
+    });
+
+    context("binary_logical_operator", inner)(input)
 }
 
 fn cmake_condition_inner(
-    input: &str,
     ignore: Option<fn(&str) -> IResult<&str, CMakeCondition>>,
-) -> IResult<&str, CMakeCondition> {
+) -> impl Fn(&str) -> IResult<&str, CMakeCondition> {
     let mut options = vec![
         cmake_condition_binary_logical_operator,
         cmake_condition_binary_test,
@@ -146,28 +168,41 @@ fn cmake_condition_inner(
             .filter(|x| x != &to_ignore)
             .collect::<Vec<_>>();
     }
-    let parser = alt_list(&options);
-    parser(input)
+    move |input| {
+        let parser = alt_list(&options);
+        parser(input)
+    }
 }
 
 pub fn cmake_condition(input: &str) -> IResult<&str, CMakeCondition> {
-    cmake_condition_inner(input, None)
+    let mut parser = context("cmake_condition", cmake_condition_inner(None));
+    parser(input)
 }
 
-fn alt_list<'a, T>(
+fn alt_list<'a, T: Debug>(
     parsers: &'a [impl Fn(&str) -> IResult<&str, T>],
 ) -> impl Fn(&str) -> IResult<&str, T> + 'a {
     return move |input| -> IResult<&str, T> {
-        for parser in parsers {
+        let parser = &parsers[0];
+        let result = parser(input);
+        if let Ok(result) = result {
+            return Ok(result);
+        }
+        let mut error = result.unwrap_err();
+        for parser in parsers.iter().skip(1) {
             let result = parser(input);
-            if result.is_ok() {
-                return result;
+            match result {
+                Ok(_) => return result,
+                Err(nom::Err::Error(err)) => error = error.map(|e| e.or(err)),
+                Err(nom::Err::Incomplete(_)) => {
+                    error = error.map(|e| e.or(ErrorType::from_error_kind(input, ErrorKind::Eof)));
+                }
+                Err(nom::Err::Failure(err)) => {
+                    error = error.map(|e| e.or(err));
+                }
             }
         }
-        Err(nom::Err::Error(VerboseError::from_error_kind(
-            input,
-            nom::error::ErrorKind::Alt,
-        )))
+        Err(error)
     };
 }
 
@@ -178,6 +213,16 @@ mod test {
     use crate::parser::types::CMakeValue;
 
     use super::*;
+
+    #[test]
+    fn test_parse_condition_value() {
+        let input = "value";
+        let result = cmake_condition(input).unwrap().1;
+        assert_eq!(
+            result,
+            CMakeCondition::Value(CMakeValue::StringLiteral(String::from("value")))
+        );
+    }
 
     #[test]
     fn test_parse_condition_unary() {

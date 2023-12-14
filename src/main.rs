@@ -1,4 +1,3 @@
-use clap::{arg, command, Arg, ArgAction};
 // The MIT License (MIT)
 //
 // Copyright (c) 2023 Pedro Tacla Yamada
@@ -20,11 +19,111 @@ use clap::{arg, command, Arg, ArgAction};
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
-use nom::combinator::all_consuming;
-use nom::error::convert_error;
+
+use std::error::Error;
+
+use clap::{arg, command, Arg, ArgAction};
+use colored::{ColoredString, Colorize};
+use nom_supreme::error::{BaseErrorKind, ErrorTree, StackContext};
+use nom_supreme::final_parser::{final_parser, Location};
 
 mod parser;
 mod pretty_printer;
+
+fn print_alternative(input_file: &str, errors: &[ErrorTree<Location>]) {
+    println!("tried alternatives:\n");
+    for (i, error) in errors.iter().enumerate() {
+        println!("======================================================================");
+        println!("alternative {}:", i + 1);
+        print_error(input_file, &error);
+        println!();
+    }
+}
+
+fn print_stack(
+    input_file: &str,
+    base: &ErrorTree<Location>,
+    contexts: &[(Location, StackContext<&str>)],
+) {
+    if contexts.len() > 1 {
+        println!(
+            "base error for STACK len={}: ===========================",
+            contexts.len()
+        );
+    }
+    for context in contexts.iter() {
+        let (location, context) = context;
+        match context {
+            StackContext::Kind(err) => {
+                println!("  ---> error_kind: {:?}", err);
+            }
+            StackContext::Context(context) => {
+                println!(
+                    "{}: {}",
+                    format!("  ---> context").bright_white(),
+                    context.bright_cyan().bold()
+                );
+            }
+        }
+        println!("  ---> stack error: {}:{}", location.line, location.column);
+    }
+    print_error(input_file, base);
+}
+
+fn format_error(error: &BaseErrorKind<&str, Box<dyn Error + Send + Sync>>) -> ColoredString {
+    format!("{}", error).bright_yellow()
+}
+
+fn print_base(
+    input_file: &str,
+    location: &Location,
+    error: &BaseErrorKind<&str, Box<dyn Error + Send + Sync>>,
+) {
+    let lines = input_file.lines();
+    let start = location.line - 3;
+    let lines = lines.enumerate().skip(start).map(|(i, l)| (i + 1, l));
+    for (line_num, line) in lines.take(6) {
+        println!(
+            "{} {}",
+            format!("{:05} |", line_num.to_string()).bright_purple(),
+            if line_num == location.line {
+                line.bright_red()
+            } else {
+                line.white()
+            }
+        );
+        if line_num == location.line {
+            print!("{}", "      | ".bright_purple());
+            for _ in 0..location.column - 1 {
+                print!(" ");
+            }
+            print!("{}", "^".yellow());
+            print!(" ");
+            print!(
+                "{}: {} ({}:{})",
+                "error".yellow(),
+                format_error(error),
+                location.line,
+                location.column
+            );
+            print!("\n");
+        }
+    }
+}
+
+fn print_error(input_file: &str, error_tree: &ErrorTree<Location>) {
+    match error_tree {
+        ErrorTree::Base { location, kind } => {
+            print_base(input_file, location, kind);
+        }
+        ErrorTree::Stack { base, contexts } => {
+            print_stack(input_file, &*base, contexts);
+        }
+        ErrorTree::Alt(errors) => {
+            print_alternative(input_file, errors);
+        }
+    }
+}
 
 fn main() {
     let matches = command!() // requires `cargo` feature
@@ -47,8 +146,9 @@ fn main() {
 
     let input_file: &String = matches.get_one("file").expect("No input file provided");
     let file_contents = std::fs::read_to_string(input_file).expect("Failed to open file");
-    match all_consuming(parser::cmake_parser)(&file_contents) {
-        Ok((_, contents)) => {
+    let mut parser = final_parser(parser::cmake_parser);
+    match parser(&file_contents) {
+        Ok(contents) => {
             let mut writer: Box<dyn std::io::Write> = if matches.get_flag("inplace") {
                 Box::new(std::fs::File::create(input_file).expect("Failed to open file"))
             } else {
@@ -65,19 +165,8 @@ fn main() {
                 .render(width, &mut writer)
                 .expect("Failed to format file");
         }
-        Err(nom::Err::Error(err)) => {
-            eprintln!("Failed to parse file");
-            eprintln!("{}", convert_error(file_contents.as_str(), err));
-            std::process::exit(1);
-        }
-        Err(nom::Err::Failure(err)) => {
-            eprintln!("Failed to parse file");
-            eprintln!("{}", convert_error(file_contents.as_str(), err));
-            std::process::exit(1);
-        }
-        Err(nom::Err::Incomplete(err)) => {
-            eprintln!("EOF");
-            eprintln!("{:?}", err);
+        Err(err) => {
+            print_error(file_contents.as_str(), &err);
             std::process::exit(1);
         }
     };
@@ -87,6 +176,8 @@ fn main() {
 mod test {
     use std::collections::HashMap;
     use std::fs::DirEntry;
+
+    use nom::combinator::all_consuming;
 
     #[test]
     fn test_smoke_tests() {
@@ -106,7 +197,7 @@ add_subdirectory(
         .collect();
 
         for input in input_output.iter() {
-            let output = super::all_consuming(super::parser::cmake_parser)(input);
+            let output = all_consuming(super::parser::cmake_parser)(input);
             let output = output.unwrap().1.print();
             let mut writer = vec![];
             {
@@ -159,7 +250,7 @@ add_subdirectory(
             },
         ) in groups.iter()
         {
-            let output = super::all_consuming(super::parser::cmake_parser)(&input_file);
+            let output = all_consuming(super::parser::cmake_parser)(&input_file);
             let output = output.unwrap().1.print();
             let mut writer = vec![];
             {

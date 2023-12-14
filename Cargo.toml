@@ -4,12 +4,13 @@ description = "Good enough (MVP, early) CMake auto formatter."
 authors = ["Pedro Tacla Yamada <tacla.yamada+git@gmail.com>"]
 readme = "README.md"
 license = "MIT"
-license-file = "LICENSE"
 repository = "https://github.com/yamadapc/cmakefmt"
 version = "0.1.7"
 edition = "2021"
 
 [dependencies]
 nom = { version = "7.1.3", features = ["alloc"] }
+colored = "2.1.0"
+nom-supreme = "0.8.0"
 pretty = "0.12.3"
 clap = { version = "4.4.11", features = ["cargo"] }

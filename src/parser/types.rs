@@ -83,6 +83,7 @@ pub struct CMakeIfStatement {
 pub struct CMakeCommandGroup {
     pub clause: Vec<CMakeValue>,
     pub body: Vec<CMakeStatement>,
+    pub end_clause: Vec<CMakeValue>,
 }
 
 #[derive(Debug, PartialEq, PartialOrd)]
@@ -101,10 +102,16 @@ pub struct CMakeMacroStatement {
 }
 
 #[derive(Debug, PartialEq, PartialOrd)]
+pub struct CMakeBlockStatement {
+    pub group: CMakeCommandGroup,
+}
+
+#[derive(Debug, PartialEq, PartialOrd)]
 pub enum CMakeStatement {
     If(CMakeIfStatement),
     For(CMakeForEachStatement),
     Function(CMakeFunctionStatement),
+    Block(CMakeBlockStatement),
     Macro(CMakeMacroStatement),
     Command(CMakeCommand),
     Comment(String),

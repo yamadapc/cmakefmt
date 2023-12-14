@@ -23,14 +23,15 @@
 use pretty::RcDoc;
 
 use crate::parser::types::{
-    CMakeCommand, CMakeCommandGroup, CMakeCondition, CMakeDocument, CMakeForEachStatement,
-    CMakeFunctionStatement, CMakeIfStatement, CMakeMacroStatement, CMakeStatement, CMakeValue,
+    CMakeBlockStatement, CMakeCommand, CMakeCommandGroup, CMakeCondition, CMakeDocument,
+    CMakeForEachStatement, CMakeFunctionStatement, CMakeIfStatement, CMakeMacroStatement,
+    CMakeStatement, CMakeValue,
 };
 
 impl CMakeValue {
     fn to_doc(&self) -> RcDoc<'static, ()> {
         match self {
-            CMakeValue::QuotedString(str) => RcDoc::text(format!("\"{}\"", str)),
+            CMakeValue::QuotedString(str) => RcDoc::text(format!("{:?}", str)),
             CMakeValue::StringLiteral(str) => RcDoc::text(str.to_string()),
             CMakeValue::Comment(str) => RcDoc::text(format!("#{}", str))
                 .flat_alt(RcDoc::text(format!("#{}", str)).append(RcDoc::hardline())),
@@ -216,6 +217,12 @@ impl CMakeMacroStatement {
     }
 }
 
+impl CMakeBlockStatement {
+    fn print(&self) -> RcDoc<'static> {
+        self.group.print("block")
+    }
+}
+
 impl CMakeStatement {
     fn print(&self) -> RcDoc<'static, ()> {
         match self {
@@ -226,6 +233,7 @@ impl CMakeStatement {
             CMakeStatement::For(for_statement) => for_statement.print(),
             CMakeStatement::Function(fn_statement) => fn_statement.print(),
             CMakeStatement::Macro(m_statement) => m_statement.print(),
+            CMakeStatement::Block(s) => s.print(),
         }
         .group()
     }

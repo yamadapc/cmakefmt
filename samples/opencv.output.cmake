@@ -211,10 +211,7 @@
 if(" ${CMAKE_SOURCE_DIR}" STREQUAL " ${CMAKE_BINARY_DIR}")
   message(
     FATAL_ERROR
-    "
-FATAL: In-source builds are not allowed.
-       You should create a separate directory for build files.
-"
+    "\nFATAL: In-source builds are not allowed.\n       You should create a separate directory for build files.\n"
   )
 endif()
 
@@ -428,8 +425,7 @@ set(
 if(NOT CMAKE_SIZEOF_VOID_P GREATER 0)
   message(
     FATAL_ERROR
-    "CMake fails to determine the bitness of the target platform.
-  Please check your CMake and compiler installation. If you are cross-compiling then ensure that your CMake toolchain file correctly sets the compiler details."
+    "CMake fails to determine the bitness of the target platform.\n  Please check your CMake and compiler installation. If you are cross-compiling then ensure that your CMake toolchain file correctly sets the compiler details."
   )
 endif()
 
@@ -2296,8 +2292,7 @@ macro(ocv_hal_register HAL_LIBRARIES_VAR HAL_HEADERS_VAR HAL_INCLUDE_DIRS_VAR)
   endforeach()
   # 2. headers
   foreach(h ${${HAL_HEADERS_VAR}})
-    set(_hal_includes "${_hal_includes}
-#include "${h}"")
+    set(_hal_includes "${_hal_includes}\n#include \"${h}\"")
   endforeach()
   # 3. include paths
   ocv_include_directories(${${HAL_INCLUDE_DIRS_VAR}})

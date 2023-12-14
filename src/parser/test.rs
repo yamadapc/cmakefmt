@@ -16,6 +16,15 @@ fn test_parse_string_literal_with_special_characters() {
 }
 
 #[test]
+fn test_parse_interpolated_literal() {
+    let (_, result) = all_consuming(cmake_string_literal)("part/$(here)/there").unwrap();
+    assert_eq!(
+        result,
+        CMakeValue::StringLiteral("part/$(here)/there".to_string())
+    );
+}
+
+#[test]
 fn test_parse_string_literal_with_parens() {
     let result = all_consuming(cmake_string_literal)("(((foo").unwrap_err();
     assert!(matches!(result, nom::Err::Error(_)));
@@ -421,7 +430,7 @@ endif ()
 #[test]
 fn test_parse_if_statement_with_single_condition() {
     let input = "if(ON)\nfoo()\nendif()";
-    let (_, result) = all_consuming(cmake_if_block)(input).unwrap();
+    let (_, result) = all_consuming(cmake_if_group)(input).unwrap();
     assert_eq!(
         result,
         CMakeStatement::If(CMakeIfStatement {
@@ -445,7 +454,7 @@ fn test_parse_if_statement_with_single_condition() {
 #[test]
 fn test_parse_if_statement_with_else() {
     let input = "if(OFF)\nfoo()\nelse()\nbar()\nendif()";
-    let (_, result) = all_consuming(cmake_if_block)(input).unwrap();
+    let (_, result) = all_consuming(cmake_if_group)(input).unwrap();
     assert_eq!(
         result,
         CMakeStatement::If(CMakeIfStatement {
@@ -478,7 +487,7 @@ fn test_parse_if_statement_with_else() {
 #[test]
 fn test_parse_nested_if_statements() {
     let input = "if(ON)\nif(OFF)\nfoo()\nendif()\nendif()";
-    let (_, result) = all_consuming(cmake_if_block)(input).unwrap();
+    let (_, result) = all_consuming(cmake_if_group)(input).unwrap();
     assert_eq!(
         result,
         CMakeStatement::If(CMakeIfStatement {
@@ -582,7 +591,7 @@ foreach (line ${config_ac_contents})
 endforeach ()
 "#
     .trim();
-    let (_, result) = all_consuming(cmake_foreach_block)(input).unwrap();
+    let (_, result) = all_consuming(cmake_foreach_group)(input).unwrap();
     assert_eq!(
         result,
         CMakeStatement::For(CMakeForEachStatement {
@@ -591,7 +600,8 @@ endforeach ()
                     CMakeValue::StringLiteral(String::from("line")),
                     CMakeValue::StringLiteral(String::from("${config_ac_contents}"))
                 ],
-                body: vec![CMakeStatement::Newline]
+                body: vec![CMakeStatement::Newline],
+                end_clause: vec![]
             }
         }),
     );
@@ -604,13 +614,14 @@ function (foo)
 endfunction ()
 "#
     .trim();
-    let (_, result) = all_consuming(cmake_function_block)(input).unwrap();
+    let (_, result) = all_consuming(cmake_function_group)(input).unwrap();
     assert_eq!(
         result,
         CMakeStatement::Function(CMakeFunctionStatement {
             group: CMakeCommandGroup {
                 clause: vec![CMakeValue::StringLiteral(String::from("foo")),],
-                body: vec![CMakeStatement::Newline]
+                body: vec![CMakeStatement::Newline],
+                end_clause: vec![]
             }
         }),
     );
@@ -619,7 +630,7 @@ endfunction ()
 #[test]
 fn test_parse_else_with_args() {
     let input = "if(OFF)\nfoo()\nelse()\nbar()\nendif()";
-    let (_, result) = all_consuming(cmake_if_block)(input).unwrap();
+    let (_, result) = all_consuming(cmake_if_group)(input).unwrap();
     assert_eq!(
         result,
         CMakeStatement::If(CMakeIfStatement {
@@ -656,13 +667,14 @@ macro (foo)
 endmacro ()
 "#
     .trim();
-    let (_, result) = all_consuming(cmake_macro_block)(input).unwrap();
+    let (_, result) = all_consuming(cmake_macro_group)(input).unwrap();
     assert_eq!(
         result,
         CMakeStatement::Macro(CMakeMacroStatement {
             group: CMakeCommandGroup {
                 clause: vec![CMakeValue::StringLiteral(String::from("foo")),],
-                body: vec![CMakeStatement::Newline]
+                body: vec![CMakeStatement::Newline],
+                end_clause: vec![]
             }
         }),
     );
@@ -700,7 +712,8 @@ endfunction()
                             ],
                         }),
                         CMakeStatement::Newline,
-                    ]
+                    ],
+                    end_clause: vec![]
                 }
             })],
         }

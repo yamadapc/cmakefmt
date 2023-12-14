@@ -1,5 +1,26 @@
-use crate::parser::parse_condition::cmake_condition;
-use nom::bytes::complete::take_till;
+// The MIT License (MIT)
+//
+// Copyright (c) 2023 Pedro Tacla Yamada
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
+use nom::bytes::complete::{tag_no_case, take_till};
 use nom::combinator::{map, opt};
 use nom::error::{context, ParseError};
 use nom::multi::many0;
@@ -7,22 +28,26 @@ use nom::{
     branch::alt,
     bytes::complete::{tag, take_till1},
     character::complete::{char, multispace0, multispace1, space0},
-    error,
     error::ErrorKind,
     multi::{many1, separated_list0},
     sequence::{delimited, tuple},
-    InputIter, InputTakeAtPosition, Parser,
+    InputTakeAtPosition, Parser,
 };
+use nom_supreme::context::ContextError;
+use nom_supreme::multi::parse_separated_terminated;
+use nom_supreme::ParserExt;
 
+use crate::parser::parse_condition::cmake_condition;
 use crate::parser::types::{
-    CMakeCommand, CMakeCommandGroup, CMakeDocument, CMakeForEachStatement, CMakeFunctionStatement,
-    CMakeIfBase, CMakeIfStatement, CMakeMacroStatement, CMakeStatement, CMakeValue,
+    CMakeBlockStatement, CMakeCommand, CMakeCommandGroup, CMakeDocument, CMakeForEachStatement,
+    CMakeFunctionStatement, CMakeIfBase, CMakeIfStatement, CMakeMacroStatement, CMakeStatement,
+    CMakeValue,
 };
 
 mod strings;
 pub mod types;
 
-const RESERVED_WORDS: [&str; 10] = [
+const RESERVED_WORDS: [&str; 12] = [
     "if",
     "elseif",
     "else",
@@ -33,14 +58,19 @@ const RESERVED_WORDS: [&str; 10] = [
     "endfunction",
     "macro",
     "endmacro",
+    "block",
+    "endblock",
 ];
 
-pub type IResult<I, O> = Result<(I, O), nom::Err<error::VerboseError<I>>>;
+pub type ErrorType<I> = nom_supreme::error::ErrorTree<I>;
+pub type IResult<I, O> = Result<(I, O), nom::Err<ErrorType<I>>>;
 
 fn cmake_comment(input: &str) -> IResult<&str, &str> {
-    let (input, _) = char('#')(input)?;
-    let (input, contents) = take_till(|item| item == '\n')(input)?;
-    Ok((input, contents))
+    let comment_start = char('#');
+    let comment_contents = take_till(|item| item == '\n');
+    map(tuple((comment_start, comment_contents)), |(_, comment)| {
+        comment
+    })(input)
 }
 
 fn cmake_command_name(input: &str) -> IResult<&str, &str> {
@@ -51,40 +81,65 @@ fn cmake_command_name(input: &str) -> IResult<&str, &str> {
 }
 
 fn cmake_quoted_string_literal(input: &str) -> IResult<&str, CMakeValue> {
-    let (input, string) = strings::parse_string(input)?;
-    Ok((input, CMakeValue::QuotedString(string)))
+    map(strings::parse_string, CMakeValue::QuotedString)(input)
 }
 
+fn cmake_string_part(input: &str) -> IResult<&str, String> {
+    let is_invalid_char = |item: char| {
+        item.is_whitespace() || item == ')' || item == '(' || item == '{' || item == '}'
+    };
+    context(
+        "string_part",
+        map(
+            many1(alt((
+                map(take_till1(is_invalid_char), |item: &str| item.to_string()),
+                // $(variable)
+                map(delimited(char('('), cmake_string_part, char(')')), |s| {
+                    format!("({})", s)
+                }),
+                // ${variable}
+                map(delimited(char('{'), cmake_string_part, char('}')), |s| {
+                    format!("{{{}}}", s)
+                }),
+            ))),
+            |result| result.join(""),
+        ),
+    )(input)
+}
+
+#[inline]
 fn cmake_string_literal(input: &str) -> IResult<&str, CMakeValue> {
-    let (input, result) =
-        take_till1(|item: char| item.is_whitespace() || item == ')' || item == '(')(input)?;
+    let (input, result) = cmake_string_part(input)?;
     if result
-        .iter_elements()
+        .chars()
         .all(|c| c.is_uppercase() || c == '_' || c.is_numeric())
     {
         return Ok((input, CMakeValue::ArgumentSpecifier(result.to_string())));
     }
-    Ok((input, CMakeValue::StringLiteral(result.to_string())))
+    Ok((input, CMakeValue::StringLiteral(result)))
 }
 
 fn cmake_value(input: &str) -> IResult<&str, CMakeValue> {
-    let (input, result) = context(
+    context(
         "Value",
         alt((
-            cmake_comment.map(|item| CMakeValue::Comment(item.to_string())),
-            cmake_quoted_string_literal,
-            cmake_string_literal,
+            context(
+                "comment",
+                cmake_comment.map(|item| CMakeValue::Comment(item.to_string())),
+            ),
+            context("quoted_string_literal", cmake_quoted_string_literal),
+            context("string_literal", cmake_string_literal),
         )),
-    )(input)?;
-    Ok((input, result))
+    )(input)
 }
 
 fn cmake_command(input: &str) -> IResult<&str, CMakeCommand> {
     let (input, name) = cmake_command_name(input)?;
-    if RESERVED_WORDS.contains(&name) {
-        return Err(nom::Err::Error(error::VerboseError::from_error_kind(
+    if RESERVED_WORDS.contains(&&*name.to_lowercase()) {
+        return Err(nom::Err::Error(ErrorType::add_context(
             input,
-            ErrorKind::AlphaNumeric,
+            "reserved word can't be used as command",
+            ErrorType::from_error_kind(input, ErrorKind::AlphaNumeric),
         )));
     }
     let (input, _) = space0(input)?;
@@ -131,106 +186,161 @@ fn cmake_arg_list_inner(input: &str) -> IResult<&str, Vec<CMakeValue>> {
 }
 
 fn cmake_else_if_block(input: &str) -> IResult<&str, CMakeIfBase> {
-    let (input, _) = tag("elseif")(input)?;
-    let (input, _) = multispace0(input)?;
-    let (input, _) = tag("(")(input)?;
-    let (input, _) = multispace0(input)?;
-    let (input, condition) = cmake_condition(input)?;
-    let (input, _) = multispace0(input)?;
-    let (input, _) = tag(")")(input)?;
-    let (input, body) = many0(delimited(space0, cmake_statement, space0))(input)?;
+    let base = tuple((
+        tag_no_case("elseif"),
+        multispace0,
+        tag("("),
+        multispace0,
+        cmake_condition,
+        multispace0,
+        tag(")"),
+        many0(delimited(space0, cmake_statement, space0)),
+    ));
+    let mut inner = map(base, |(_, _, _, _, condition, _, _, body)| CMakeIfBase {
+        condition,
+        body,
+    });
 
-    Ok((input, CMakeIfBase { condition, body }))
+    inner(input)
 }
 
-fn cmake_if_block(input: &str) -> IResult<&str, CMakeStatement> {
-    let (input, _) = tag("if")(input)?;
-    let (input, _) = multispace0(input)?;
-    let (input, _) = tag("(")(input)?;
-    let (input, _) = multispace0(input)?;
-    let (input, condition) = cmake_condition(input)?;
-    let (input, _) = multispace0(input)?;
-    let (input, _) = tag(")")(input)?;
-
-    let (input, body) = many0(delimited(space0, cmake_statement, space0))(input)?;
-    let (input, else_ifs) = many0(delimited(space0, cmake_else_if_block, space0))(input)?;
-    let (input, else_body) = opt(delimited(
-        space0,
-        tuple((
-            skip_empty_command("else"),
-            many0(delimited(space0, cmake_statement, space0)),
-        )),
-        space0,
-    ))(input)?;
-    let (input, _) = tuple((tag("endif"), space0, cmake_args))(input)?;
-
-    Ok((
-        input,
-        CMakeStatement::If(CMakeIfStatement {
-            base: CMakeIfBase { condition, body },
-            else_ifs,
-            else_body: else_body.map(|(_, body)| body),
+fn cmake_if_group(input: &str) -> IResult<&str, CMakeStatement> {
+    let if_start = tuple((tag_no_case("if"), multispace0, tag("("), multispace0));
+    let condition = cmake_condition;
+    let if_end = tuple((multispace0, tag(")")));
+    let parse_condition = context(
+        "parse_if_condition",
+        map(tuple((if_start, condition, if_end)), |(_, condition, _)| {
+            condition
         }),
-    ))
+    );
+    let parse_if_statements = context(
+        "parse_if_statements",
+        many0(delimited(space0, cmake_statement, space0)),
+    );
+    let parse_else_if_blocks = context(
+        "parse_else_if_blocks",
+        many0(delimited(space0, cmake_else_if_block, space0)),
+    );
+    let parse_else_block = context(
+        "parse_else_block",
+        opt(delimited(
+            space0,
+            tuple((
+                skip_empty_command("else"),
+                many0(delimited(space0, cmake_statement, space0)),
+            )),
+            space0,
+        )),
+    );
+    let parse_endif = context("parse_endif", skip_empty_command("endif"));
+
+    let parse_if_statement_tuple = tuple((
+        parse_condition,
+        parse_if_statements,
+        parse_else_if_blocks,
+        parse_else_block,
+        parse_endif,
+    ));
+
+    let mut parse_if_statement = map(
+        parse_if_statement_tuple,
+        |(condition, body, else_ifs, else_body, _)| {
+            CMakeStatement::If(CMakeIfStatement {
+                base: CMakeIfBase { condition, body },
+                else_ifs,
+                else_body: else_body.map(|(_, body)| body),
+            })
+        },
+    );
+
+    parse_if_statement(input)
 }
 
 fn cmake_clause_body_block<'a>(
     keyword: &'a str,
-) -> impl Fn(&str) -> IResult<&str, CMakeCommandGroup> + 'a {
+) -> impl FnMut(&str) -> IResult<&str, CMakeCommandGroup> + 'a {
+    let keyword_end = format!("end{}", keyword);
     move |input| {
-        let (input, _) = tag(keyword)(input)?;
-        let (input, _) = space0(input)?;
-        let (input, clause) = cmake_args(input)?;
-        let (input, body) = many0(delimited(space0, cmake_statement, space0))(input)?;
-        let (input, _) = skip_empty_command(&format!("end{}", keyword))(input)?;
+        let prefix = tuple((tag_no_case(keyword), space0));
+        let body = many0(delimited(space0, cmake_statement, space0));
+        let end_clause = skip_empty_command(&keyword_end);
+        let base = tuple((prefix, cmake_args, body, end_clause));
 
-        Ok((input, CMakeCommandGroup { clause, body }))
+        let mut parser = map(base, |(_, clause, body, end_clause)| CMakeCommandGroup {
+            clause,
+            body,
+            end_clause,
+        });
+        parser(input)
     }
 }
 
-fn cmake_foreach_block(input: &str) -> IResult<&str, CMakeStatement> {
-    let (input, group) = cmake_clause_body_block("foreach")(input)?;
-    Ok((input, CMakeStatement::For(CMakeForEachStatement { group })))
+fn cmake_foreach_group(input: &str) -> IResult<&str, CMakeStatement> {
+    let block = cmake_clause_body_block("foreach");
+    map(block, |group| {
+        CMakeStatement::For(CMakeForEachStatement { group })
+    })(input)
 }
 
-fn cmake_function_block(input: &str) -> IResult<&str, CMakeStatement> {
-    let (input, group) = cmake_clause_body_block("function")(input)?;
-    Ok((
-        input,
-        CMakeStatement::Function(CMakeFunctionStatement { group }),
-    ))
+fn cmake_function_group(input: &str) -> IResult<&str, CMakeStatement> {
+    let function_block = cmake_clause_body_block("function");
+    map(function_block, |group| {
+        CMakeStatement::Function(CMakeFunctionStatement { group })
+    })(input)
 }
 
-fn cmake_macro_block(input: &str) -> IResult<&str, CMakeStatement> {
-    let (input, group) = cmake_clause_body_block("macro")(input)?;
-    Ok((input, CMakeStatement::Macro(CMakeMacroStatement { group })))
+fn cmake_macro_group(input: &str) -> IResult<&str, CMakeStatement> {
+    map(cmake_clause_body_block("macro"), |group| {
+        CMakeStatement::Macro(CMakeMacroStatement { group })
+    })(input)
 }
 
-fn skip_empty_command<'a>(name: &'a str) -> impl Fn(&str) -> IResult<&str, ()> + 'a {
+fn cmake_block_group(input: &str) -> IResult<&str, CMakeStatement> {
+    map(cmake_clause_body_block("block"), |group| {
+        CMakeStatement::Block(CMakeBlockStatement { group })
+    })(input)
+}
+
+fn skip_empty_command<'a>(name: &'a str) -> impl Fn(&str) -> IResult<&str, Vec<CMakeValue>> + 'a {
     move |input| {
-        let (input, _) = tag(name)(input)?;
-        let (input, _) = space0(input)?;
-        let (input, _) = tag("(")(input)?;
-        let (input, _) = space0(input)?;
-        let (input, _) = tag(")")(input)?;
-        Ok((input, ()))
+        let command = tag_no_case(name);
+        let parser = tuple((command, space0, cmake_args));
+        map(parser, |(_, _, clause)| clause)(input)
     }
 }
 
 fn cmake_statement(input: &str) -> IResult<&str, CMakeStatement> {
     alt((
-        cmake_if_block,
-        cmake_foreach_block,
-        cmake_function_block,
-        cmake_macro_block,
-        cmake_command.map(CMakeStatement::Command),
-        cmake_comment.map(|item| CMakeStatement::Comment(item.to_string())),
-        tuple((tag("\n"), space0)).map(|_| CMakeStatement::Newline),
+        context("command", cmake_command.map(CMakeStatement::Command)),
+        context(
+            "comment",
+            cmake_comment.map(|item| CMakeStatement::Comment(item.to_string())),
+        ),
+        context(
+            "newline",
+            tuple((tag("\n"), space0)).map(|_| CMakeStatement::Newline),
+        ),
+        context("if", cmake_if_group),
+        context("foreach", cmake_foreach_group),
+        context("function", cmake_function_group),
+        context("macro", cmake_macro_group),
+        context("block", cmake_block_group),
     ))(input)
 }
 
 pub fn cmake_parser(input: &str) -> IResult<&str, CMakeDocument> {
-    let (input, statements) = many1(delimited(space0, cmake_statement, space0))(input)?;
+    let mut parser = parse_separated_terminated(
+        cmake_statement,
+        space0,
+        multispace0.all_consuming(),
+        || vec![],
+        |mut memo, current| {
+            memo.push(current);
+            memo
+        },
+    );
+    let (input, statements) = parser.parse(input)?;
     Ok((input, CMakeDocument { statements }))
 }
 
