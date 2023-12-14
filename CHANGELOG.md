@@ -1,3 +1,7 @@
+# 0.1.8 (14-12-2023)
+
+* Fixes to parsing errors and improvements to error reporting
+
 # 0.1.7 (13-12-2023)
 
 * Add in-place flag
