@@ -74,7 +74,14 @@ where
         char('\\'),
         // `alt` tries each parser in sequence, returning the result of
         // the first successful match
-        alt((value("\\$", char('$')),)),
+        alt((
+            value("$", char('$')),
+            value("{", char('{')),
+            value("}", char('}')),
+            value("(", char('(')),
+            value(")", char(')')),
+            value("'", char('\'')),
+        )),
     )(input)
 }
 
@@ -191,6 +198,16 @@ where
 mod test {
     use crate::parser::strings::parse_string;
     use crate::parser::ErrorType;
+
+    // #[test]
+    // fn test_parse_parenthesis_escape() {
+    //     let input = r#""\\\$\{[\r\n\t ]*gyb.expand\\\([\r\n\t ]*[\'\"]([^\'\"]*)[\'\"]""#;
+    //     let result = parse_string::<ErrorType<&str>>(input).unwrap();
+    //     assert_eq!(
+    //         result.1,
+    //         "\\\\$\\{[\r\n\t ]*gyb.expand\\\\([\r\n\t ]*[\\\'\"]([^\\\'\"]*)[\\\'\"]"
+    //     );
+    // }
 
     #[test]
     fn test_parse_dollar_escapes() {

@@ -71,20 +71,20 @@ fn cmake_condition_unary_test(input: &str) -> IResult<&str, CMakeCondition> {
 fn cmake_condition_binary_test(input: &str) -> IResult<&str, CMakeCondition> {
     let operator = alt((
         tag("EQUAL"),
-        tag("LESS"),
         tag("LESS_EQUAL"),
-        tag("GREATER"),
+        tag("LESS"),
         tag("GREATER_EQUAL"),
+        tag("GREATER"),
         tag("STREQUAL"),
-        tag("STRLESS"),
         tag("STRLESS_EQUAL"),
-        tag("STRGREATER"),
+        tag("STRLESS"),
         tag("STRGREATER_EQUAL"),
+        tag("STRGREATER"),
         tag("VERSION_EQUAL"),
-        tag("VERSION_LESS"),
         tag("VERSION_LESS_EQUAL"),
-        tag("VERSION_GREATER"),
+        tag("VERSION_LESS"),
         tag("VERSION_GREATER_EQUAL"),
+        tag("VERSION_GREATER"),
         tag("PATH_EQUAL"),
         tag("MATCHES"),
         tag("INLIST"),
@@ -264,12 +264,12 @@ mod test {
         assert_eq!(
             result,
             CMakeCondition::BinaryTest {
-                operator: "STRLESS".to_string(),
-                left: Box::new(CMakeCondition::Value(CMakeValue::StringLiteral(
-                    "/usr/include".to_string()
+                operator: "VERSION_GREATER_EQUAL".to_string(),
+                left: Box::new(CMakeCondition::Value(CMakeValue::ArgumentSpecifier(
+                    "CUDA_VERSION".to_string()
                 ))),
                 right: Box::new(CMakeCondition::Value(CMakeValue::StringLiteral(
-                    "other".to_string()
+                    "10.1".to_string()
                 )))
             }
         );
