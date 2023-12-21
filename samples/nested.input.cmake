@@ -1,0 +1,3 @@
+if(CUDA_VERSION VERSION_GREATER_EQUAL 10.1)
+  message(TEST)
+endif()

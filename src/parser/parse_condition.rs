@@ -258,6 +258,24 @@ mod test {
     }
 
     #[test]
+    fn test_parse_version_binary_condition() {
+        let input = "CUDA_VERSION VERSION_GREATER_EQUAL 10.1";
+        let result = cmake_condition(input).unwrap().1;
+        assert_eq!(
+            result,
+            CMakeCondition::BinaryTest {
+                operator: "STRLESS".to_string(),
+                left: Box::new(CMakeCondition::Value(CMakeValue::StringLiteral(
+                    "/usr/include".to_string()
+                ))),
+                right: Box::new(CMakeCondition::Value(CMakeValue::StringLiteral(
+                    "other".to_string()
+                )))
+            }
+        );
+    }
+
+    #[test]
     fn test_parse_condition_unary_logical_operator() {
         let input = "NOT (EXISTS /usr/include)";
         let result = cmake_condition(input).unwrap().1;
