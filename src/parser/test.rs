@@ -39,7 +39,7 @@ fn test_parse_quoted_string_with_escaped_quotes() {
 #[test]
 fn test_parse_quoted_string_with_inner_quotes() {
     let (_, result) = all_consuming(cmake_quoted_string_literal)(r#""foo\"bar""#).unwrap();
-    assert_eq!(result, CMakeValue::QuotedString(r#"foo"bar"#.to_string()));
+    assert_eq!(result, CMakeValue::QuotedString(r#"foo\"bar"#.to_string()));
 }
 
 #[test]

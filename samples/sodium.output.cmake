@@ -228,7 +228,14 @@ else()
   sodium_check_func(getpid HAVE_GETPID)
   
   check_c_source_compiles(
-    "\n        #pragma GCC target(\"mmx\")\n        #include <mmintrin.h>\n        int main(void)\n        {\n          __m64 x = _mm_setzero_si64();\n        }\n        "
+    "
+        #pragma GCC target(\"mmx\")
+        #include <mmintrin.h>
+        int main(void)
+        {
+          __m64 x = _mm_setzero_si64();
+        }
+        "
     HAVE_MMINTRIN_H
   )
   
@@ -238,7 +245,18 @@ else()
   endif()
   
   check_c_source_compiles(
-    "\n        #pragma GCC target(\"sse2\")\n        #ifndef __SSE2__\n        # define __SSE2__\n        #endif\n\n        #include <emmintrin.h>\n        int main(void) {\n          __m128d x = _mm_setzero_pd();\n          __m128i z = _mm_srli_epi64(_mm_setzero_si128(), 26);\n        }\n        "
+    "
+        #pragma GCC target(\"sse2\")
+        #ifndef __SSE2__
+        # define __SSE2__
+        #endif
+
+        #include <emmintrin.h>
+        int main(void) {
+          __m128d x = _mm_setzero_pd();
+          __m128i z = _mm_srli_epi64(_mm_setzero_si128(), 26);
+        }
+        "
     HAVE_EMMINTRIN_H
   )
   
@@ -248,7 +266,13 @@ else()
   endif()
   
   check_c_source_compiles(
-    "\n        #pragma GCC target(\"sse3\")\n        #include <pmmintrin.h>\n        int main(void) {\n          __m128 x = _mm_addsub_ps(_mm_cvtpd_ps(_mm_setzero_pd()), _mm_cvtpd_ps(_mm_setzero_pd()));\n        }\n        "
+    "
+        #pragma GCC target(\"sse3\")
+        #include <pmmintrin.h>
+        int main(void) {
+          __m128 x = _mm_addsub_ps(_mm_cvtpd_ps(_mm_setzero_pd()), _mm_cvtpd_ps(_mm_setzero_pd()));
+        }
+        "
     HAVE_PMMINTRIN_H
   )
   
@@ -258,7 +282,13 @@ else()
   endif()
   
   check_c_source_compiles(
-    "\n        #pragma GCC target(\"ssse3\")\n        #include <tmmintrin.h>\n        int main(void) {\n          __m64 x = _mm_abs_pi32(_m_from_int(0));\n        }\n        "
+    "
+        #pragma GCC target(\"ssse3\")
+        #include <tmmintrin.h>
+        int main(void) {
+          __m64 x = _mm_abs_pi32(_m_from_int(0));
+        }
+        "
     HAVE_TMMINTRIN_H
   )
   
@@ -268,7 +298,13 @@ else()
   endif()
   
   check_c_source_compiles(
-    "\n        #pragma GCC target(\"sse4.1\")\n        #include <smmintrin.h>\n        int main(void) {\n          __m128i x = _mm_minpos_epu16(_mm_setzero_si128());\n        }\n        "
+    "
+        #pragma GCC target(\"sse4.1\")
+        #include <smmintrin.h>
+        int main(void) {
+          __m128i x = _mm_minpos_epu16(_mm_setzero_si128());
+        }
+        "
     HAVE_SMMINTRIN_H
   )
   
@@ -278,7 +314,16 @@ else()
   endif()
   
   check_c_source_compiles(
-    "\n        #ifdef __native_client__\n        # error NativeClient detected - Avoiding AVX opcodes\n        #endif\n        #pragma GCC target(\"avx\")\n        #include <immintrin.h>\n        int main(void) {\n          _mm256_zeroall();\n        }\n        "
+    "
+        #ifdef __native_client__
+        # error NativeClient detected - Avoiding AVX opcodes
+        #endif
+        #pragma GCC target(\"avx\")
+        #include <immintrin.h>
+        int main(void) {
+          _mm256_zeroall();
+        }
+        "
     HAVE_AVXINTRIN_H
   )
   
@@ -288,7 +333,18 @@ else()
   endif()
   
   check_c_source_compiles(
-    "\n        #ifdef __native_client__\n        # error NativeClient detected - Avoiding AVX2 opcodes\n        #endif\n        #pragma GCC target(\"avx2\")\n        #include <immintrin.h>\n        int main(void) {\n          __m256 x = _mm256_set1_ps(3.14);\n          __m256 y = _mm256_permutevar8x32_ps(x, _mm256_set1_epi32(42));\n          return _mm256_movemask_ps(_mm256_cmp_ps(x, y, _CMP_NEQ_OQ));\n        }\n        "
+    "
+        #ifdef __native_client__
+        # error NativeClient detected - Avoiding AVX2 opcodes
+        #endif
+        #pragma GCC target(\"avx2\")
+        #include <immintrin.h>
+        int main(void) {
+          __m256 x = _mm256_set1_ps(3.14);
+          __m256 y = _mm256_permutevar8x32_ps(x, _mm256_set1_epi32(42));
+          return _mm256_movemask_ps(_mm256_cmp_ps(x, y, _CMP_NEQ_OQ));
+        }
+        "
     HAVE_AVX2INTRIN_H
   )
   
@@ -297,7 +353,16 @@ else()
     target_compile_options(${PROJECT_NAME} PRIVATE -mavx2)
     
     check_c_source_compiles(
-      "\n            #ifdef __native_client__\n            # error NativeClient detected - Avoiding AVX2 opcodes\n            #endif\n            #pragma GCC target(\"avx2\")\n            #include <immintrin.h>\n            int main(void) {\n              __m256i y = _mm256_broadcastsi128_si256(_mm_setzero_si128());\n            }\n            "
+      "
+            #ifdef __native_client__
+            # error NativeClient detected - Avoiding AVX2 opcodes
+            #endif
+            #pragma GCC target(\"avx2\")
+            #include <immintrin.h>
+            int main(void) {
+              __m256i y = _mm256_broadcastsi128_si256(_mm_setzero_si128());
+            }
+            "
       _mm256_broadcastsi128_si256_DEFINED
     )
     
@@ -310,7 +375,30 @@ else()
   endif()
   
   check_c_source_compiles(
-    "\n        #ifdef __native_client__\n        # error NativeClient detected - Avoiding AVX512F opcodes\n        #endif\n        #pragma GCC target(\"avx512f\")\n        #include <immintrin.h>\n\n        #ifndef __AVX512F__\n        # error No AVX512 support\n        #elif defined(__clang__)\n        # if __clang_major__ < 4\n        #  error Compiler AVX512 support may be broken\n        # endif\n        #elif defined(__GNUC__)\n        # if __GNUC__ < 6\n        #  error Compiler AVX512 support may be broken\n        # endif\n        #endif\n\n        int main(void) {\n          __m512i x = _mm512_setzero_epi32();\n          __m512i y = _mm512_permutexvar_epi64(_mm512_setr_epi64(0, 1, 4, 5, 2, 3, 6, 7), x);\n        }\n        "
+    "
+        #ifdef __native_client__
+        # error NativeClient detected - Avoiding AVX512F opcodes
+        #endif
+        #pragma GCC target(\"avx512f\")
+        #include <immintrin.h>
+
+        #ifndef __AVX512F__
+        # error No AVX512 support
+        #elif defined(__clang__)
+        # if __clang_major__ < 4
+        #  error Compiler AVX512 support may be broken
+        # endif
+        #elif defined(__GNUC__)
+        # if __GNUC__ < 6
+        #  error Compiler AVX512 support may be broken
+        # endif
+        #endif
+
+        int main(void) {
+          __m512i x = _mm512_setzero_epi32();
+          __m512i y = _mm512_permutexvar_epi64(_mm512_setr_epi64(0, 1, 4, 5, 2, 3, 6, 7), x);
+        }
+        "
     HAVE_AVX512FINTRIN_H
   )
   
@@ -322,7 +410,19 @@ else()
   endif()
   
   check_c_source_compiles(
-    "\n        #ifdef __native_client__\n        # error NativeClient detected - Avoiding AESNI opcodes\n        #endif\n        #pragma GCC target(\"aes\")\n        #pragma GCC target(\"pclmul\")\n        #include <wmmintrin.h>\n\n        int main(void) {\n          __m128i x = _mm_aesimc_si128(_mm_setzero_si128());\n          __m128i y = _mm_clmulepi64_si128(_mm_setzero_si128(), _mm_setzero_si128(), 0);\n        }\n        "
+    "
+        #ifdef __native_client__
+        # error NativeClient detected - Avoiding AESNI opcodes
+        #endif
+        #pragma GCC target(\"aes\")
+        #pragma GCC target(\"pclmul\")
+        #include <wmmintrin.h>
+
+        int main(void) {
+          __m128i x = _mm_aesimc_si128(_mm_setzero_si128());
+          __m128i y = _mm_clmulepi64_si128(_mm_setzero_si128(), _mm_setzero_si128(), 0);
+        }
+        "
     HAVE_WMMINTRIN_H
   )
   
@@ -332,7 +432,18 @@ else()
   endif()
   
   check_c_source_compiles(
-    "\n        #ifdef __native_client__\n        # error NativeClient detected - Avoiding RDRAND opcodes\n        #endif\n        #pragma GCC target(\"rdrnd\")\n        #include <immintrin.h>\n\n        int main(void) {\n          unsigned long long x;\n          _rdrand64_step(&x);\n        }\n        "
+    "
+        #ifdef __native_client__
+        # error NativeClient detected - Avoiding RDRAND opcodes
+        #endif
+        #pragma GCC target(\"rdrnd\")
+        #include <immintrin.h>
+
+        int main(void) {
+          unsigned long long x;
+          _rdrand64_step(&x);
+        }
+        "
     HAVE_RDRAND
   )
   
@@ -342,7 +453,13 @@ else()
   endif()
   
   check_c_source_compiles(
-    "\n        #include <intrin.h>\n\n        int main(void) {\n          (void) _xgetbv(0);\n        }\n        "
+    "
+        #include <intrin.h>
+
+        int main(void) {
+          (void) _xgetbv(0);
+        }
+        "
     HAVE__XGETBV
   )
   
@@ -351,7 +468,13 @@ else()
   endif()
   
   check_c_source_compiles(
-    "\n        int main(void) {\n          int a = 42;\n          int *pnt = &a;\n          __asm__ __volatile__ (\"\" : : \"r\"(pnt) : \"memory\");\n        }\n        "
+    "
+        int main(void) {
+          int a = 42;
+          int *pnt = &a;
+          __asm__ __volatile__ (\"\" : : \"r\"(pnt) : \"memory\");
+        }
+        "
     HAVE_INLINE_ASM
   )
   
@@ -360,7 +483,25 @@ else()
   endif()
   
   check_c_source_compiles(
-    "\n        int main(void) {\n        #if defined(__amd64) || defined(__amd64__) || defined(__x86_64__)\n        # if defined(__CYGWIN__) || defined(__MINGW32__) || defined(__MINGW64__) || defined(_WIN32) || defined(_WIN64)\n        #  error Windows x86_64 calling conventions are not supported yet\n        # endif\n        /* neat */\n        #else\n        # error !x86_64\n        #endif\n          unsigned char i = 0, o = 0, t;\n          __asm__ __volatile__ (\"pxor %%xmm12, %%xmm6 \n\"\n            \"movb (%[i]), %[t] \n\"\n            \"addb %[t], (%[o]) \n\"\n            : [t] \"=&r\"(t)\n            : [o] \"D\"(&o), [i] \"S\"(&i)\n            : \"memory\", \"flags\", \"cc\");\n        }\n        "
+    "
+        int main(void) {
+        #if defined(__amd64) || defined(__amd64__) || defined(__x86_64__)
+        # if defined(__CYGWIN__) || defined(__MINGW32__) || defined(__MINGW64__) || defined(_WIN32) || defined(_WIN64)
+        #  error Windows x86_64 calling conventions are not supported yet
+        # endif
+        /* neat */
+        #else
+        # error !x86_64
+        #endif
+          unsigned char i = 0, o = 0, t;
+          __asm__ __volatile__ (\"pxor %%xmm12, %%xmm6 \n\"
+            \"movb (%[i]), %[t] \n\"
+            \"addb %[t], (%[o]) \n\"
+            : [t] \"=&r\"(t)
+            : [o] \"D\"(&o), [i] \"S\"(&i)
+            : \"memory\", \"flags\", \"cc\");
+        }
+        "
     HAVE_AMD64_ASM
   )
   
@@ -369,7 +510,19 @@ else()
   endif()
   
   check_c_source_compiles(
-    "\n        int main(void) {\n        #if defined(__amd64) || defined(__amd64__) || defined(__x86_64__)\n        # if defined(__CYGWIN__) || defined(__MINGW32__) || defined(__MINGW64__) || defined(_WIN32) || defined(_WIN64)\n        #  error Windows x86_64 calling conventions are not supported yet\n        # endif\n        /* neat */\n        #else\n        # error !x86_64\n        #endif\n          __asm__ __volatile__ (\"vpunpcklqdq %xmm0,%xmm13,%xmm0\");\n        }\n        "
+    "
+        int main(void) {
+        #if defined(__amd64) || defined(__amd64__) || defined(__x86_64__)
+        # if defined(__CYGWIN__) || defined(__MINGW32__) || defined(__MINGW64__) || defined(_WIN32) || defined(_WIN64)
+        #  error Windows x86_64 calling conventions are not supported yet
+        # endif
+        /* neat */
+        #else
+        # error !x86_64
+        #endif
+          __asm__ __volatile__ (\"vpunpcklqdq %xmm0,%xmm13,%xmm0\");
+        }
+        "
     HAVE_AVX_ASM
   )
   
@@ -378,7 +531,36 @@ else()
   endif()
   
   check_c_source_compiles(
-    "\n        #if !defined(__clang__) && !defined(__GNUC__) && !defined(__SIZEOF_INT128__)\n        # error mode(TI) is a gcc extension, and __int128 is not available\n        #endif\n        #if defined(__clang__) && !defined(__x86_64__) && !defined(__aarch64__)\n        # error clang does not properly handle the 128-bit type on 32-bit systems\n        #endif\n        #ifndef NATIVE_LITTLE_ENDIAN\n        # error libsodium currently expects a little endian CPU for the 128-bit type\n        #endif\n        #ifdef __EMSCRIPTEN__\n        # error emscripten currently doesn't support some operations on integers larger than 64 bits\n        #endif\n        #include <stddef.h>\n        #include <stdint.h>\n        #if defined(__SIZEOF_INT128__)\n        typedef unsigned __int128 uint128_t;\n        #else\n        typedef unsigned uint128_t __attribute__((mode(TI)));\n        #endif\n        void fcontract(uint128_t *t) {\n          *t += 0x8000000000000 - 1;\n          *t *= *t;\n          *t >>= 84;\n        }\n\n        int main(void) {\n          (void) fcontract;\n        }\n        "
+    "
+        #if !defined(__clang__) && !defined(__GNUC__) && !defined(__SIZEOF_INT128__)
+        # error mode(TI) is a gcc extension, and __int128 is not available
+        #endif
+        #if defined(__clang__) && !defined(__x86_64__) && !defined(__aarch64__)
+        # error clang does not properly handle the 128-bit type on 32-bit systems
+        #endif
+        #ifndef NATIVE_LITTLE_ENDIAN
+        # error libsodium currently expects a little endian CPU for the 128-bit type
+        #endif
+        #ifdef __EMSCRIPTEN__
+        # error emscripten currently doesn't support some operations on integers larger than 64 bits
+        #endif
+        #include <stddef.h>
+        #include <stdint.h>
+        #if defined(__SIZEOF_INT128__)
+        typedef unsigned __int128 uint128_t;
+        #else
+        typedef unsigned uint128_t __attribute__((mode(TI)));
+        #endif
+        void fcontract(uint128_t *t) {
+          *t += 0x8000000000000 - 1;
+          *t *= *t;
+          *t >>= 84;
+        }
+
+        int main(void) {
+          (void) fcontract;
+        }
+        "
     HAVE_TI_MODE
   )
   
@@ -387,7 +569,15 @@ else()
   endif()
   
   check_c_source_compiles(
-    "\n        int main(void) {\n          unsigned int cpu_info[4];\n          __asm__ __volatile__ (\"xchgl %%ebx, %k1; cpuid; xchgl %%ebx, %k1\" :\n            \"=a\" (cpu_info[0]), \"=&r\" (cpu_info[1]),\n            \"=c\" (cpu_info[2]), \"=d\" (cpu_info[3]) :\n            \"0\" (0U), \"2\" (0U));\n        }\n        "
+    "
+        int main(void) {
+          unsigned int cpu_info[4];
+          __asm__ __volatile__ (\"xchgl %%ebx, %k1; cpuid; xchgl %%ebx, %k1\" :
+            \"=a\" (cpu_info[0]), \"=&r\" (cpu_info[1]),
+            \"=c\" (cpu_info[2]), \"=d\" (cpu_info[3]) :
+            \"0\" (0U), \"2\" (0U));
+        }
+        "
     HAVE_CPUID
   )
   
@@ -396,7 +586,14 @@ else()
   endif()
   
   check_c_source_compiles(
-    "\n        #if !defined(__ELF__) && !defined(__APPLE_CC__)\n        # error Support for weak symbols may not be available\n        #endif\n        __attribute__((weak)) void __dummy(void *x) { }\n        void f(void *x) { __dummy(x); }\n        int main(void) {}\n        "
+    "
+        #if !defined(__ELF__) && !defined(__APPLE_CC__)
+        # error Support for weak symbols may not be available
+        #endif
+        __attribute__((weak)) void __dummy(void *x) { }
+        void f(void *x) { __dummy(x); }
+        int main(void) {}
+        "
     HAVE_WEAK_SYMBOLS
   )
   
@@ -405,7 +602,13 @@ else()
   endif()
   
   check_c_source_compiles(
-    "\n        int main(void) {\n          static volatile int _sodium_lock;\n          __sync_lock_test_and_set(&_sodium_lock, 1);\n          __sync_lock_release(&_sodium_lock);\n        }\n        "
+    "
+        int main(void) {
+          static volatile int _sodium_lock;
+          __sync_lock_test_and_set(&_sodium_lock, 1);
+          __sync_lock_release(&_sodium_lock);
+        }
+        "
     HAVE_ATOMIC_OPS
   )
   
@@ -414,7 +617,14 @@ else()
   endif()
   
   check_c_source_compiles(
-    "\n        #include <limits.h>\n        #include <stdint.h>\n        int main(void) {\n          (void) SIZE_MAX;\n          (void) UINT64_MAX;\n        }\n        "
+    "
+        #include <limits.h>
+        #include <stdint.h>
+        int main(void) {
+          (void) SIZE_MAX;
+          (void) UINT64_MAX;
+        }
+        "
     STDC_LIMIT_MACROS_REQUIRED
   )
   

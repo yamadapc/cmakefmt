@@ -31,7 +31,7 @@ use crate::parser::types::{
 impl CMakeValue {
     fn to_doc(&self) -> RcDoc<'static, ()> {
         match self {
-            CMakeValue::QuotedString(str) => RcDoc::text(format!("{:?}", str)),
+            CMakeValue::QuotedString(str) => RcDoc::text(format!("\"{}\"", str)),
             CMakeValue::StringLiteral(str) => RcDoc::text(str.to_string()),
             CMakeValue::Comment(str) => RcDoc::text(format!("#{}", str))
                 .flat_alt(RcDoc::text(format!("#{}", str)).append(RcDoc::hardline())),

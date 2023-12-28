@@ -211,7 +211,10 @@
 if(" ${CMAKE_SOURCE_DIR}" STREQUAL " ${CMAKE_BINARY_DIR}")
   message(
     FATAL_ERROR
-    "\nFATAL: In-source builds are not allowed.\n       You should create a separate directory for build files.\n"
+    "
+FATAL: In-source builds are not allowed.
+       You should create a separate directory for build files.
+"
   )
 endif()
 
@@ -425,7 +428,8 @@ set(
 if(NOT CMAKE_SIZEOF_VOID_P GREATER 0)
   message(
     FATAL_ERROR
-    "CMake fails to determine the bitness of the target platform.\n  Please check your CMake and compiler installation. If you are cross-compiling then ensure that your CMake toolchain file correctly sets the compiler details."
+    "CMake fails to determine the bitness of the target platform.
+  Please check your CMake and compiler installation. If you are cross-compiling then ensure that your CMake toolchain file correctly sets the compiler details."
   )
 endif()
 

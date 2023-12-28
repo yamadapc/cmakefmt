@@ -44,7 +44,6 @@ use crate::parser::types::{
     CMakeValue,
 };
 
-mod strings;
 pub mod types;
 
 const RESERVED_WORDS: [&str; 12] = [
@@ -342,5 +341,6 @@ pub fn cmake_parser(input: &str) -> IResult<&str, CMakeDocument> {
 }
 
 mod parse_condition;
+mod strings;
 #[cfg(test)]
 mod test;
