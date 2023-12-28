@@ -18,6 +18,8 @@ cmakefmt <file>
   which aren't parsed correctly
 * Error handling prints nice error messages, but it's very verbose and sometimes
   the true parsing error is deeper into the file
+* Need to implement custom string handling to support CMAKE specific escape
+  sequences
 
 ## Rules
 
