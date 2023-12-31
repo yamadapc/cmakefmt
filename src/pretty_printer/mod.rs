@@ -37,6 +37,7 @@ impl CMakeValue {
                 .flat_alt(RcDoc::text(format!("#{}", str)).append(RcDoc::hardline())),
             CMakeValue::ArgumentSpecifier(arg) => RcDoc::text(arg.to_string()),
             CMakeValue::Parenthesis(char) => RcDoc::text(char.to_string()),
+            CMakeValue::BracketComment(str) => RcDoc::text(format!("#[[{}]]", str)),
         }
     }
 }
@@ -234,6 +235,7 @@ impl CMakeStatement {
             CMakeStatement::Function(fn_statement) => fn_statement.print(),
             CMakeStatement::Macro(m_statement) => m_statement.print(),
             CMakeStatement::Block(s) => s.print(),
+            CMakeStatement::BracketComment(s) => RcDoc::text(format!("#[[{}]]", s)),
         }
         .group()
     }

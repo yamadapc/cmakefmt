@@ -21,6 +21,7 @@
 // THE SOFTWARE.
 
 use nom::branch::alt;
+use nom::bytes::complete::tag;
 use nom::character::complete::{char as parse_char, none_of};
 use nom::combinator::map;
 use nom::multi::many0;
@@ -30,6 +31,7 @@ use crate::parser::IResult;
 
 enum StringPart {
     Char(char),
+    EscapedSlash,
     EscapedQuote(char),
 }
 
@@ -38,11 +40,12 @@ pub fn parse_string(input: &str) -> IResult<&str, String> {
         preceded(parse_char('\\'), parse_char('"')),
         StringPart::EscapedQuote,
     );
+    let parse_escaped_slash = map(tag("\\\\"), |_| StringPart::EscapedSlash);
     let parse_string_char = map(none_of("\""), StringPart::Char);
     map(
         delimited(
             parse_char('"'),
-            many0(alt((parse_quote, parse_string_char))),
+            many0(alt((parse_escaped_slash, parse_quote, parse_string_char))),
             parse_char('"'),
         ),
         |parts| {
@@ -51,6 +54,7 @@ pub fn parse_string(input: &str) -> IResult<&str, String> {
                 .flat_map(|p| match p {
                     StringPart::Char(c) => format!("{}", c).chars().collect::<Vec<char>>(),
                     StringPart::EscapedQuote(_) => "\\\"".chars().collect(),
+                    StringPart::EscapedSlash => "\\\\".chars().collect(),
                 })
                 .collect::<String>()
         },

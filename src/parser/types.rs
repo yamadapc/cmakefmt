@@ -26,6 +26,7 @@ pub enum CMakeValue {
     QuotedString(String),
     StringLiteral(String),
     Comment(String),
+    BracketComment(String),
     Parenthesis(String),
 }
 
@@ -114,6 +115,7 @@ pub enum CMakeStatement {
     Block(CMakeBlockStatement),
     Macro(CMakeMacroStatement),
     Command(CMakeCommand),
+    BracketComment(String),
     Comment(String),
     Newline,
 }

@@ -1,3 +1,4 @@
+#!/usr/bin/env npx zx
 const allFiles = await $`find ./tests -type f`.quiet();
 const allFilesArr = allFiles.stdout.split('\n').filter(s => s);
 let failures = 0;

@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-use nom::bytes::complete::{tag_no_case, take_till};
+use nom::bytes::complete::{is_not, tag_no_case, take_till};
 use nom::combinator::{map, opt};
 use nom::error::{context, ParseError};
 use nom::multi::many0;
@@ -70,6 +70,16 @@ fn cmake_comment(input: &str) -> IResult<&str, &str> {
     map(tuple((comment_start, comment_contents)), |(_, comment)| {
         comment
     })(input)
+}
+
+fn cmake_bracket_comment(input: &str) -> IResult<&str, &str> {
+    let comment_start = tag("#[[");
+    let comment_end = tag("]]");
+    let comment_contents = is_not("]]");
+    map(
+        delimited(comment_start, comment_contents, comment_end),
+        |comment| comment,
+    )(input)
 }
 
 fn cmake_command_name(input: &str) -> IResult<&str, &str> {
@@ -122,6 +132,10 @@ fn cmake_value(input: &str) -> IResult<&str, CMakeValue> {
     context(
         "Value",
         alt((
+            context(
+                "bracket_comment",
+                cmake_bracket_comment.map(|item| CMakeValue::BracketComment(item.to_string())),
+            ),
             context(
                 "comment",
                 cmake_comment.map(|item| CMakeValue::Comment(item.to_string())),
@@ -309,6 +323,10 @@ fn skip_empty_command<'a>(name: &'a str) -> impl Fn(&str) -> IResult<&str, Vec<C
 fn cmake_statement(input: &str) -> IResult<&str, CMakeStatement> {
     alt((
         context("command", cmake_command.map(CMakeStatement::Command)),
+        context(
+            "bracket_comment",
+            cmake_bracket_comment.map(|item| CMakeStatement::BracketComment(item.to_string())),
+        ),
         context(
             "comment",
             cmake_comment.map(|item| CMakeStatement::Comment(item.to_string())),
