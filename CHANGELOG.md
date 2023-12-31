@@ -1,3 +1,9 @@
+# 0.1.9 (31-12-2023)
+
+* Fixes to parsing parenthesis in commands
+* Fixes to parsing strings and escape sequences
+* Adds support for CMake multi-line bracket comments
+
 # 0.1.8 (14-12-2023)
 
 * Fixes to parsing errors and improvements to error reporting

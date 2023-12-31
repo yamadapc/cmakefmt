@@ -16,3 +16,5 @@ Cargo.lock
 
 # End of https://www.gitignore.io/api/rust
 /.idea
+samples/scratch.input.cmake
+samples/scratch.output.cmake
