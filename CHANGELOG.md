@@ -1,3 +1,8 @@
+# 0.1.10 (pending)
+
+* Fix parenthesis bugs
+* Fix bracket comment edge-case
+
 # 0.1.9 (31-12-2023)
 
 * Fixes to parsing parenthesis in commands
