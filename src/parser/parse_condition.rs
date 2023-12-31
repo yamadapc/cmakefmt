@@ -22,6 +22,7 @@
 
 use nom::branch::alt;
 use nom::bytes::complete::tag;
+use nom::character::complete::multispace0;
 use nom::combinator::map;
 use nom::error::ParseError;
 use nom::error::{context, ErrorKind};
@@ -34,11 +35,15 @@ use crate::parser::{cmake_value, ErrorType, IResult};
 fn cmake_condition_parentheses(input: &str) -> IResult<&str, CMakeCondition> {
     let base = tuple((
         nom::character::complete::char('('),
+        multispace0,
         cmake_condition,
+        multispace0,
         nom::character::complete::char(')'),
     ));
-    let inner = map(base, |(_, condition, _)| CMakeCondition::Parentheses {
-        value: Box::new(condition),
+    let inner = map(base, |(_, _, condition, _, _)| {
+        CMakeCondition::Parentheses {
+            value: Box::new(condition),
+        }
     });
 
     context("condition_parentheses", inner)(input)

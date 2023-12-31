@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-use nom::bytes::complete::{is_not, tag_no_case, take_till};
+use nom::bytes::complete::{is_not, tag_no_case, take_till, take_until};
 use nom::combinator::{map, opt};
 use nom::error::{context, ParseError};
 use nom::multi::many0;
@@ -39,9 +39,9 @@ use nom_supreme::ParserExt;
 
 use crate::parser::parse_condition::cmake_condition;
 use crate::parser::types::{
-    CMakeBlockStatement, CMakeCommand, CMakeCommandGroup, CMakeDocument, CMakeForEachStatement,
-    CMakeFunctionStatement, CMakeIfBase, CMakeIfStatement, CMakeMacroStatement, CMakeStatement,
-    CMakeValue,
+    CMakeBlockStatement, CMakeBracketComment, CMakeCommand, CMakeCommandGroup, CMakeDocument,
+    CMakeForEachStatement, CMakeFunctionStatement, CMakeIfBase, CMakeIfStatement,
+    CMakeMacroStatement, CMakeStatement, CMakeValue,
 };
 
 pub mod types;
@@ -72,14 +72,19 @@ fn cmake_comment(input: &str) -> IResult<&str, &str> {
     })(input)
 }
 
-fn cmake_bracket_comment(input: &str) -> IResult<&str, &str> {
-    let comment_start = tag("#[[");
-    let comment_end = tag("]]");
-    let comment_contents = is_not("]]");
-    map(
-        delimited(comment_start, comment_contents, comment_end),
-        |comment| comment,
-    )(input)
+fn cmake_bracket_comment(input: &str) -> IResult<&str, CMakeBracketComment> {
+    let (input, delimiter) = delimited(tag("#["), opt(is_not("[\n")), tag("["))(input)?;
+    let end_tag = format!("]{}]", delimiter.unwrap_or(""));
+    let end_parser = tag(&*end_tag);
+    let (input, comment) = take_until(&*end_tag)(input)?;
+    let (input, _) = end_parser(input)?;
+    Ok((
+        input,
+        CMakeBracketComment {
+            delimiter: delimiter.unwrap_or("").to_string(),
+            contents: comment.to_string(),
+        },
+    ))
 }
 
 fn cmake_command_name(input: &str) -> IResult<&str, &str> {
@@ -134,7 +139,7 @@ fn cmake_value(input: &str) -> IResult<&str, CMakeValue> {
         alt((
             context(
                 "bracket_comment",
-                cmake_bracket_comment.map(|item| CMakeValue::BracketComment(item.to_string())),
+                cmake_bracket_comment.map(|item| CMakeValue::BracketComment(item)),
             ),
             context(
                 "comment",
@@ -325,7 +330,7 @@ fn cmake_statement(input: &str) -> IResult<&str, CMakeStatement> {
         context("command", cmake_command.map(CMakeStatement::Command)),
         context(
             "bracket_comment",
-            cmake_bracket_comment.map(|item| CMakeStatement::BracketComment(item.to_string())),
+            cmake_bracket_comment.map(|item| CMakeStatement::BracketComment(item)),
         ),
         context(
             "comment",

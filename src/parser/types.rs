@@ -26,7 +26,7 @@ pub enum CMakeValue {
     QuotedString(String),
     StringLiteral(String),
     Comment(String),
-    BracketComment(String),
+    BracketComment(CMakeBracketComment),
     Parenthesis(String),
 }
 
@@ -108,6 +108,12 @@ pub struct CMakeBlockStatement {
 }
 
 #[derive(Debug, PartialEq, PartialOrd)]
+pub struct CMakeBracketComment {
+    pub delimiter: String,
+    pub contents: String,
+}
+
+#[derive(Debug, PartialEq, PartialOrd)]
 pub enum CMakeStatement {
     If(CMakeIfStatement),
     For(CMakeForEachStatement),
@@ -115,7 +121,7 @@ pub enum CMakeStatement {
     Block(CMakeBlockStatement),
     Macro(CMakeMacroStatement),
     Command(CMakeCommand),
-    BracketComment(String),
+    BracketComment(CMakeBracketComment),
     Comment(String),
     Newline,
 }

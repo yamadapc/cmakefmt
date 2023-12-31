@@ -23,10 +23,19 @@
 use pretty::RcDoc;
 
 use crate::parser::types::{
-    CMakeBlockStatement, CMakeCommand, CMakeCommandGroup, CMakeCondition, CMakeDocument,
-    CMakeForEachStatement, CMakeFunctionStatement, CMakeIfStatement, CMakeMacroStatement,
-    CMakeStatement, CMakeValue,
+    CMakeBlockStatement, CMakeBracketComment, CMakeCommand, CMakeCommandGroup, CMakeCondition,
+    CMakeDocument, CMakeForEachStatement, CMakeFunctionStatement, CMakeIfStatement,
+    CMakeMacroStatement, CMakeStatement, CMakeValue,
 };
+
+impl CMakeBracketComment {
+    fn print(&self) -> RcDoc<'static, ()> {
+        RcDoc::text(format!(
+            "#[{}[{}]{}]",
+            self.delimiter, self.contents, self.delimiter
+        ))
+    }
+}
 
 impl CMakeValue {
     fn to_doc(&self) -> RcDoc<'static, ()> {
@@ -37,7 +46,7 @@ impl CMakeValue {
                 .flat_alt(RcDoc::text(format!("#{}", str)).append(RcDoc::hardline())),
             CMakeValue::ArgumentSpecifier(arg) => RcDoc::text(arg.to_string()),
             CMakeValue::Parenthesis(char) => RcDoc::text(char.to_string()),
-            CMakeValue::BracketComment(str) => RcDoc::text(format!("#[[{}]]", str)),
+            CMakeValue::BracketComment(comment) => comment.print(),
         }
     }
 }
@@ -235,7 +244,7 @@ impl CMakeStatement {
             CMakeStatement::Function(fn_statement) => fn_statement.print(),
             CMakeStatement::Macro(m_statement) => m_statement.print(),
             CMakeStatement::Block(s) => s.print(),
-            CMakeStatement::BracketComment(s) => RcDoc::text(format!("#[[{}]]", s)),
+            CMakeStatement::BracketComment(s) => s.print(),
         }
         .group()
     }
