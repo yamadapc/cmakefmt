@@ -20,111 +20,16 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-use clap::{arg, command, Arg, ArgAction};
-use nom_supreme::final_parser::final_parser;
-use std::io::Write;
-
 mod errors;
+mod options;
 mod parser;
 mod pretty_printer;
-
-struct DefaultWriter {
-    imp: Box<dyn std::io::Write>,
-}
-
-impl DefaultWriter {
-    fn new(inplace: bool, input_file: &str) -> Self {
-        DefaultWriter {
-            imp: if inplace {
-                Box::new(std::fs::File::create(input_file).expect("Failed to open file"))
-            } else {
-                Box::new(std::io::stdout())
-            },
-        }
-    }
-}
-
-impl Write for DefaultWriter {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        let buf = String::from_utf8(buf.to_vec()).unwrap();
-        let buf = buf.replace("\r", "");
-        if buf.is_empty() {
-            return Ok(0);
-        }
-        self.imp.write(buf.as_ref())
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        self.imp.flush()
-    }
-
-    fn write_all(&mut self, buf: &[u8]) -> std::io::Result<()> {
-        let buf = String::from_utf8(buf.to_vec()).unwrap();
-        let buf = buf.replace("\r", "");
-        if !buf.is_empty() {
-            let _ = self.imp.write(buf.as_ref());
-        }
-        return Ok(());
-    }
-}
+mod run;
+mod writer;
 
 fn main() {
-    let matches = command!() // requires `cargo` feature
-        .arg(
-            Arg::new("inplace")
-                .short('i')
-                .long("in-place")
-                .help("Write to the input file after formatting")
-                .action(ArgAction::SetTrue),
-        )
-        .arg(
-            Arg::new("max-width")
-                .long("max-width")
-                .num_args(1)
-                .default_value("80")
-                .help("The column limit to be used"),
-        )
-        .arg(
-            Arg::new("verbose")
-                .long("verbose")
-                .help("Print debug logs")
-                .action(ArgAction::SetTrue),
-        )
-        .arg(arg!([file] "Target file").required(true))
-        .get_matches();
-
-    let verbose = matches.get_flag("verbose");
-
-    let input_file: &String = matches.get_one("file").expect("No input file provided");
-    let file_contents = std::fs::read_to_string(input_file).expect("Failed to open file");
-    let mut parser = final_parser(parser::cmake_parser);
-
-    if verbose {
-        println!("{file_contents:#?}");
-    }
-    match parser(&file_contents) {
-        Ok(contents) => {
-            if verbose {
-                println!("{contents:#?}");
-            }
-
-            let mut writer = DefaultWriter::new(matches.get_flag("inplace"), input_file.as_str());
-            let width = matches
-                .get_one("max-width")
-                .cloned()
-                .map(|s: String| s.parse::<usize>().ok())
-                .flatten()
-                .unwrap_or(80);
-            contents
-                .print()
-                .render(width, &mut writer)
-                .expect("Failed to format file");
-        }
-        Err(err) => {
-            errors::print_error(input_file, file_contents.as_str(), &err);
-            std::process::exit(1);
-        }
-    };
+    let opts = options::parse_options();
+    run::run_cmakefmt(opts);
 }
 
 #[cfg(test)]
