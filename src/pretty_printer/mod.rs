@@ -254,7 +254,7 @@ impl CMakeStatement {
 }
 
 impl CMakeDocument {
-    pub(crate) fn print(&self) -> RcDoc<'static, ()> {
+    pub fn print(&self) -> RcDoc<'static, ()> {
         RcDoc::intersperse(
             {
                 let mut result = vec![];
