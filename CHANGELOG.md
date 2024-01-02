@@ -1,7 +1,9 @@
-# 0.1.10 (pending)
+# 0.1.10 (02-01-2024)
 
 * Fix parenthesis bugs
 * Fix bracket comment edge-case
+* Fix comment newline handling bugs
+* Fix parsing comments within conditions
 
 # 0.1.9 (31-12-2023)
 
