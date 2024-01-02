@@ -111,13 +111,18 @@ add_subdirectory(
         ) in groups.iter()
         {
             let output = all_consuming(super::parser::cmake_parser)(&input_file);
-            let output = output.unwrap().1.print();
+            let (_, input_document) = output.unwrap();
+            let output = input_document.print();
             let mut writer = vec![];
             {
                 output.render(80, &mut writer).unwrap();
             }
             let output = String::from_utf8(writer).unwrap();
             assert_eq!(&output, output_file);
+
+            let (_, round_trip_document) =
+                all_consuming(super::parser::cmake_parser)(&output).unwrap();
+            assert_eq!(&input_document, &round_trip_document);
         }
     }
 }
