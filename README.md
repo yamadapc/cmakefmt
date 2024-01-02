@@ -1,5 +1,5 @@
 # cmakefmt
-![Crates.io Version](https://img.shields.io/crates/v/cmakefmt)
+[![Crates.io Version](https://img.shields.io/crates/v/cmakefmt)](https://crates.io/crates/cmakefmt)
 - - -
 Good enough CMake auto formatter. No settings, prints to STDOUT.
 
