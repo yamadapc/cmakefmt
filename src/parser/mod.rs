@@ -21,6 +21,7 @@
 // THE SOFTWARE.
 
 use nom::bytes::complete::{is_not, tag_no_case, take_till, take_until};
+use nom::character::complete::line_ending;
 use nom::combinator::{map, opt};
 use nom::error::{context, ParseError};
 use nom::multi::many0;
@@ -338,7 +339,7 @@ fn cmake_statement(input: &str) -> IResult<&str, CMakeStatement> {
         ),
         context(
             "newline",
-            tuple((tag("\n"), space0)).map(|_| CMakeStatement::Newline),
+            tuple((line_ending, space0)).map(|_| CMakeStatement::Newline),
         ),
         context("if", cmake_if_group),
         context("foreach", cmake_foreach_group),

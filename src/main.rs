@@ -22,10 +22,51 @@
 
 use clap::{arg, command, Arg, ArgAction};
 use nom_supreme::final_parser::final_parser;
+use std::io::Write;
 
 mod errors;
 mod parser;
 mod pretty_printer;
+
+struct DefaultWriter {
+    imp: Box<dyn std::io::Write>,
+}
+
+impl DefaultWriter {
+    fn new(inplace: bool, input_file: &str) -> Self {
+        DefaultWriter {
+            imp: if inplace {
+                Box::new(std::fs::File::create(input_file).expect("Failed to open file"))
+            } else {
+                Box::new(std::io::stdout())
+            },
+        }
+    }
+}
+
+impl Write for DefaultWriter {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        let buf = String::from_utf8(buf.to_vec()).unwrap();
+        let buf = buf.replace("\r", "");
+        if buf.is_empty() {
+            return Ok(0);
+        }
+        self.imp.write(buf.as_ref())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.imp.flush()
+    }
+
+    fn write_all(&mut self, buf: &[u8]) -> std::io::Result<()> {
+        let buf = String::from_utf8(buf.to_vec()).unwrap();
+        let buf = buf.replace("\r", "");
+        if !buf.is_empty() {
+            let _ = self.imp.write(buf.as_ref());
+        }
+        return Ok(());
+    }
+}
 
 fn main() {
     let matches = command!() // requires `cargo` feature
@@ -43,19 +84,31 @@ fn main() {
                 .default_value("80")
                 .help("The column limit to be used"),
         )
+        .arg(
+            Arg::new("verbose")
+                .long("verbose")
+                .help("Print debug logs")
+                .action(ArgAction::SetTrue),
+        )
         .arg(arg!([file] "Target file").required(true))
         .get_matches();
+
+    let verbose = matches.get_flag("verbose");
 
     let input_file: &String = matches.get_one("file").expect("No input file provided");
     let file_contents = std::fs::read_to_string(input_file).expect("Failed to open file");
     let mut parser = final_parser(parser::cmake_parser);
+
+    if verbose {
+        println!("{file_contents:#?}");
+    }
     match parser(&file_contents) {
         Ok(contents) => {
-            let mut writer: Box<dyn std::io::Write> = if matches.get_flag("inplace") {
-                Box::new(std::fs::File::create(input_file).expect("Failed to open file"))
-            } else {
-                Box::new(std::io::stdout())
-            };
+            if verbose {
+                println!("{contents:#?}");
+            }
+
+            let mut writer = DefaultWriter::new(matches.get_flag("inplace"), input_file.as_str());
             let width = matches
                 .get_one("max-width")
                 .cloned()

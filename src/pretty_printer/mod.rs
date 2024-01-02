@@ -147,6 +147,9 @@ impl CMakeCondition {
                 .append(RcDoc::space())
                 .append(right.print()),
             CMakeCondition::Value(value) => value.to_doc(),
+            CMakeCondition::Comment { content, tail } => RcDoc::text(format!("#{}", content))
+                .append(RcDoc::line())
+                .append(tail.as_ref().map(|t| t.print()).unwrap_or(RcDoc::text(""))),
         }
     }
 }

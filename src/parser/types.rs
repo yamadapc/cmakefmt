@@ -58,6 +58,10 @@ pub enum CMakeCondition {
         left: Box<CMakeCondition>,
         right: Box<CMakeCondition>,
     },
+    Comment {
+        content: String,
+        tail: Option<Box<CMakeCondition>>,
+    },
     Value(CMakeValue),
 }
 

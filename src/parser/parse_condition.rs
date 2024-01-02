@@ -23,14 +23,14 @@
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::multispace0;
-use nom::combinator::map;
+use nom::combinator::{map, opt};
 use nom::error::ParseError;
 use nom::error::{context, ErrorKind};
 use nom::sequence::tuple;
 use std::fmt::Debug;
 
 use crate::parser::types::CMakeCondition;
-use crate::parser::{cmake_value, ErrorType, IResult};
+use crate::parser::{cmake_comment, cmake_value, ErrorType, IResult};
 
 fn cmake_condition_parentheses(input: &str) -> IResult<&str, CMakeCondition> {
     let base = tuple((
@@ -156,6 +156,17 @@ fn cmake_condition_binary_logical_operator(input: &str) -> IResult<&str, CMakeCo
     context("binary_logical_operator", inner)(input)
 }
 
+fn cmake_condition_comment(input: &str) -> IResult<&str, CMakeCondition> {
+    let inner = map(
+        tuple((cmake_comment, multispace0, opt(cmake_condition))),
+        |(comment, _, tail)| CMakeCondition::Comment {
+            content: comment.to_string(),
+            tail: tail.map(Box::new),
+        },
+    );
+    context("condition_comment", inner)(input)
+}
+
 fn cmake_condition_inner(
     ignore: Option<fn(&str) -> IResult<&str, CMakeCondition>>,
 ) -> impl Fn(&str) -> IResult<&str, CMakeCondition> {
@@ -165,6 +176,7 @@ fn cmake_condition_inner(
         cmake_condition_unary_logical_operator,
         cmake_condition_unary_test,
         cmake_condition_parentheses,
+        cmake_condition_comment,
         cmake_condition_value,
     ];
     if let Some(to_ignore) = ignore {
@@ -315,6 +327,32 @@ mod test {
                     "false".to_string()
                 )))
             }
+        );
+    }
+
+    #[test]
+    fn test_parse_condition_with_comment() {
+        let input = r#"true
+            AND  # comment
+            false"#;
+        let result = cmake_condition(input).unwrap();
+        assert_eq!(
+            result,
+            (
+                "",
+                CMakeCondition::BinaryLogicalOperator {
+                    operator: "AND".to_string(),
+                    left: Box::new(CMakeCondition::Value(CMakeValue::StringLiteral(
+                        "true".to_string()
+                    ))),
+                    right: Box::new(CMakeCondition::Comment {
+                        content: " comment".to_string(),
+                        tail: Some(Box::new(CMakeCondition::Value(CMakeValue::StringLiteral(
+                            "false".to_string()
+                        ))))
+                    })
+                }
+            )
         );
     }
 

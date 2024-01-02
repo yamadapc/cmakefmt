@@ -67,6 +67,12 @@ fn test_parse_comment_with_spaces() {
 }
 
 #[test]
+fn test_parse_comment_with_utf8() {
+    let (_, result) = all_consuming(cmake_comment)("# 解析外来字符").unwrap();
+    assert_eq!(result, " 解析外来字符");
+}
+
+#[test]
 fn test_parse_comment_with_content() {
     let (_, result) = all_consuming(cmake_comment)("# This is a test").unwrap();
     assert_eq!(result, " This is a test");
