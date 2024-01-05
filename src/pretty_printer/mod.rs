@@ -23,17 +23,24 @@
 use pretty::RcDoc;
 
 use crate::parser::types::{
-    CMakeBlockStatement, CMakeBracketComment, CMakeCommand, CMakeCommandGroup, CMakeCondition,
+    CMakeBlockStatement, CMakeBracketLiteral, CMakeCommand, CMakeCommandGroup, CMakeCondition,
     CMakeDocument, CMakeForEachStatement, CMakeFunctionStatement, CMakeIfStatement,
     CMakeMacroStatement, CMakeStatement, CMakeValue,
 };
 
-impl CMakeBracketComment {
+impl CMakeBracketLiteral {
     fn print(&self) -> RcDoc<'static, ()> {
-        RcDoc::text(format!(
-            "#[{}[{}]{}]",
-            self.delimiter, self.contents, self.delimiter
-        ))
+        if self.is_comment {
+            RcDoc::text(format!(
+                "#[{}[{}]{}]",
+                self.delimiter, self.contents, self.delimiter
+            ))
+        } else {
+            RcDoc::text(format!(
+                "[{}[{}]{}]",
+                self.delimiter, self.contents, self.delimiter
+            ))
+        }
     }
 }
 
@@ -47,6 +54,7 @@ impl CMakeValue {
             CMakeValue::ArgumentSpecifier(arg) => RcDoc::text(arg.to_string()),
             CMakeValue::Parenthesis(char) => RcDoc::text(char.to_string()),
             CMakeValue::BracketComment(comment) => comment.print(),
+            CMakeValue::BracketQuotedString(s) => s.print(),
         }
     }
 }

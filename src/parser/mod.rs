@@ -25,6 +25,7 @@ use nom::character::complete::line_ending;
 use nom::combinator::{map, opt};
 use nom::error::{context, ParseError};
 use nom::multi::many0;
+use nom::sequence::preceded;
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_till1},
@@ -40,7 +41,7 @@ use nom_supreme::ParserExt;
 
 use crate::parser::parse_condition::cmake_condition;
 use crate::parser::types::{
-    CMakeBlockStatement, CMakeBracketComment, CMakeCommand, CMakeCommandGroup, CMakeDocument,
+    CMakeBlockStatement, CMakeBracketLiteral, CMakeCommand, CMakeCommandGroup, CMakeDocument,
     CMakeForEachStatement, CMakeFunctionStatement, CMakeIfBase, CMakeIfStatement,
     CMakeMacroStatement, CMakeStatement, CMakeValue,
 };
@@ -73,19 +74,26 @@ fn cmake_comment(input: &str) -> IResult<&str, &str> {
     })(input)
 }
 
-fn cmake_bracket_comment(input: &str) -> IResult<&str, CMakeBracketComment> {
-    let (input, delimiter) = delimited(tag("#["), opt(is_not("[\n")), tag("["))(input)?;
-    let end_tag = format!("]{}]", delimiter.unwrap_or(""));
-    let end_parser = tag(&*end_tag);
-    let (input, comment) = take_until(&*end_tag)(input)?;
-    let (input, _) = end_parser(input)?;
-    Ok((
-        input,
-        CMakeBracketComment {
-            delimiter: delimiter.unwrap_or("").to_string(),
-            contents: comment.to_string(),
-        },
-    ))
+fn cmake_bracket_comment(is_comment: bool) -> impl Fn(&str) -> IResult<&str, CMakeBracketLiteral> {
+    move |input| {
+        let (input, delimiter) = delimited(
+            if is_comment { tag("#[") } else { tag("[") },
+            opt(is_not("[\n")),
+            tag("["),
+        )(input)?;
+        let end_tag = format!("]{}]", delimiter.unwrap_or(""));
+        let end_parser = tag(&*end_tag);
+        let (input, comment) = take_until(&*end_tag)(input)?;
+        let (input, _) = end_parser(input)?;
+        Ok((
+            input,
+            CMakeBracketLiteral {
+                is_comment,
+                delimiter: delimiter.unwrap_or("").to_string(),
+                contents: comment.to_string(),
+            },
+        ))
+    }
 }
 
 fn cmake_command_name(input: &str) -> IResult<&str, &str> {
@@ -140,11 +148,15 @@ fn cmake_value(input: &str) -> IResult<&str, CMakeValue> {
         alt((
             context(
                 "bracket_comment",
-                cmake_bracket_comment.map(|item| CMakeValue::BracketComment(item)),
+                cmake_bracket_comment(true).map(|item| CMakeValue::BracketComment(item)),
             ),
             context(
                 "comment",
                 cmake_comment.map(|item| CMakeValue::Comment(item.to_string())),
+            ),
+            context(
+                "bracket_string",
+                cmake_bracket_comment(false).map(|item| CMakeValue::BracketQuotedString(item)),
             ),
             context("quoted_string_literal", cmake_quoted_string_literal),
             context("string_literal", cmake_string_literal),
@@ -331,7 +343,7 @@ fn cmake_statement(input: &str) -> IResult<&str, CMakeStatement> {
         context("command", cmake_command.map(CMakeStatement::Command)),
         context(
             "bracket_comment",
-            cmake_bracket_comment.map(|item| CMakeStatement::BracketComment(item)),
+            cmake_bracket_comment(true).map(|item| CMakeStatement::BracketComment(item)),
         ),
         context(
             "comment",
@@ -351,7 +363,7 @@ fn cmake_statement(input: &str) -> IResult<&str, CMakeStatement> {
 
 pub fn cmake_parser(input: &str) -> IResult<&str, CMakeDocument> {
     let mut parser = parse_separated_terminated(
-        cmake_statement,
+        preceded(space0, cmake_statement),
         space0,
         multispace0.all_consuming(),
         || vec![],

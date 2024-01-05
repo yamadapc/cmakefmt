@@ -21,7 +21,7 @@
 // THE SOFTWARE.
 
 use nom::branch::alt;
-use nom::bytes::complete::tag;
+use nom::bytes::complete::tag_no_case;
 use nom::character::complete::multispace0;
 use nom::combinator::{map, opt};
 use nom::error::ParseError;
@@ -51,14 +51,15 @@ fn cmake_condition_parentheses(input: &str) -> IResult<&str, CMakeCondition> {
 
 fn cmake_condition_unary_test(input: &str) -> IResult<&str, CMakeCondition> {
     let operator = alt((
-        tag("EXISTS"),
-        tag("IS_ABSOLUTE"),
-        tag("IS_DIRECTORY"),
-        tag("IS_SYMLINK"),
-        tag("COMMAND"),
-        tag("DEFINED"),
-        tag("POLICY"),
-        tag("TARGET"),
+        tag_no_case("EXISTS"),
+        tag_no_case("IS_ABSOLUTE"),
+        tag_no_case("IS_DIRECTORY"),
+        tag_no_case("IS_SYMLINK"),
+        tag_no_case("COMMAND"),
+        tag_no_case("DEFINED"),
+        tag_no_case("POLICY"),
+        tag_no_case("TEST"),
+        tag_no_case("TARGET"),
     ));
     let base = tuple((
         operator,
@@ -75,27 +76,27 @@ fn cmake_condition_unary_test(input: &str) -> IResult<&str, CMakeCondition> {
 
 fn cmake_condition_binary_test(input: &str) -> IResult<&str, CMakeCondition> {
     let operator = alt((
-        tag("EQUAL"),
-        tag("LESS_EQUAL"),
-        tag("LESS"),
-        tag("GREATER_EQUAL"),
-        tag("GREATER"),
-        tag("STREQUAL"),
-        tag("STRLESS_EQUAL"),
-        tag("STRLESS"),
-        tag("STRGREATER_EQUAL"),
-        tag("STRGREATER"),
-        tag("VERSION_EQUAL"),
-        tag("VERSION_LESS_EQUAL"),
-        tag("VERSION_LESS"),
-        tag("VERSION_GREATER_EQUAL"),
-        tag("VERSION_GREATER"),
-        tag("PATH_EQUAL"),
-        tag("MATCHES"),
-        tag("INLIST"),
-        tag("IN_LIST"),
-        tag("NOTINLIST"),
-        tag("NOT_IN_LIST"),
+        tag_no_case("EQUAL"),
+        tag_no_case("LESS_EQUAL"),
+        tag_no_case("LESS"),
+        tag_no_case("GREATER_EQUAL"),
+        tag_no_case("GREATER"),
+        tag_no_case("STREQUAL"),
+        tag_no_case("STRLESS_EQUAL"),
+        tag_no_case("STRLESS"),
+        tag_no_case("STRGREATER_EQUAL"),
+        tag_no_case("STRGREATER"),
+        tag_no_case("VERSION_EQUAL"),
+        tag_no_case("VERSION_LESS_EQUAL"),
+        tag_no_case("VERSION_LESS"),
+        tag_no_case("VERSION_GREATER_EQUAL"),
+        tag_no_case("VERSION_GREATER"),
+        tag_no_case("PATH_EQUAL"),
+        tag_no_case("MATCHES"),
+        tag_no_case("INLIST"),
+        tag_no_case("IN_LIST"),
+        tag_no_case("NOTINLIST"),
+        tag_no_case("NOT_IN_LIST"),
     ));
     let base = tuple((
         cmake_condition_value,
@@ -122,7 +123,7 @@ fn cmake_condition_value(input: &str) -> IResult<&str, CMakeCondition> {
 
 fn cmake_condition_unary_logical_operator(input: &str) -> IResult<&str, CMakeCondition> {
     let base = tuple((
-        tag("NOT"),
+        tag_no_case("NOT"),
         nom::character::complete::multispace1,
         cmake_condition,
     ));
@@ -137,7 +138,7 @@ fn cmake_condition_unary_logical_operator(input: &str) -> IResult<&str, CMakeCon
 }
 
 fn cmake_condition_binary_logical_operator(input: &str) -> IResult<&str, CMakeCondition> {
-    let parse_operator = alt((tag("AND"), tag("OR")));
+    let parse_operator = alt((tag_no_case("AND"), tag_no_case("OR")));
     let parse_base = tuple((
         cmake_condition_inner(Some(cmake_condition_binary_logical_operator)),
         nom::character::complete::multispace1,
