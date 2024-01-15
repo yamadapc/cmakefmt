@@ -186,6 +186,36 @@ fn test_parse_command() {
 }
 
 #[test]
+fn test_parse_command_with_string_argument() {
+    let (_, result) = all_consuming(cmake_command)("foo(\"here\" baz)").unwrap();
+    assert_eq!(
+        result,
+        CMakeCommand {
+            name: "foo".to_string(),
+            args: vec![
+                CMakeValue::QuotedString("here".to_string()),
+                CMakeValue::StringLiteral("baz".to_string()),
+            ],
+        }
+    );
+}
+
+#[test]
+fn test_parse_command_with_dangling_comma() {
+    let (_, result) = all_consuming(cmake_command)("foo(\"here\", baz)").unwrap();
+    assert_eq!(
+        result,
+        CMakeCommand {
+            name: "foo".to_string(),
+            args: vec![
+                CMakeValue::QuotedString("here".to_string()),
+                CMakeValue::StringLiteral("baz".to_string()),
+            ],
+        }
+    );
+}
+
+#[test]
 fn test_parse_command_multiple_args() {
     let (_, result) = all_consuming(cmake_command)("foo(bar baz)").unwrap();
     assert_eq!(

@@ -25,7 +25,7 @@ use nom::bytes::complete::tag;
 use nom::character::complete::{char as parse_char, none_of};
 use nom::combinator::map;
 use nom::multi::many0;
-use nom::sequence::{delimited, preceded};
+use nom::sequence::{delimited, preceded, tuple};
 
 use crate::parser::IResult;
 
@@ -43,12 +43,15 @@ pub fn parse_string(input: &str) -> IResult<&str, String> {
     let parse_escaped_slash = map(tag("\\\\"), |_| StringPart::EscapedSlash);
     let parse_string_char = map(none_of("\""), StringPart::Char);
     map(
-        delimited(
-            parse_char('"'),
-            many0(alt((parse_escaped_slash, parse_quote, parse_string_char))),
-            parse_char('"'),
-        ),
-        |parts| {
+        tuple((
+            delimited(
+                parse_char('"'),
+                many0(alt((parse_escaped_slash, parse_quote, parse_string_char))),
+                parse_char('"'),
+            ),
+            many0(parse_char(',')),
+        )),
+        |(parts, _)| {
             parts
                 .iter()
                 .flat_map(|p| match p {
