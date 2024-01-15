@@ -18,4 +18,3 @@ Cargo.lock
 /.idea
 samples/scratch.input.cmake
 samples/scratch.output.cmake
-/experiments
