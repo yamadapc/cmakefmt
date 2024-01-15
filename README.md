@@ -16,10 +16,10 @@ cmakefmt <file>
 ## State
 
 * Basic syntax is handled and prints
-* Based on smoketests on around 400 cmake files, there are ~8% of cases which
-  aren't parsed correctly
 * Error handling prints nice error messages, but it's very verbose and sometimes
   the true parsing error is deeper into the file
+* Ignores commas after quoted string literals since that just breaks string commands and isn't valid syntax
+* Fails to parse conditional expressions if comments are put before a binary conditional operator (AND/OR etc.)
 
 ## Rules
 

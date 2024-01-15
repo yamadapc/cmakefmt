@@ -331,6 +331,33 @@ mod test {
         );
     }
 
+    #[ignore]
+    #[test]
+    fn test_parse_condition_with_command_before_operator() {
+        let input = r#"true   # comment
+            AND
+            false"#;
+        let result = cmake_condition(input).unwrap();
+        assert_eq!(
+            result,
+            (
+                "",
+                CMakeCondition::BinaryLogicalOperator {
+                    operator: "AND".to_string(),
+                    left: Box::new(CMakeCondition::Value(CMakeValue::StringLiteral(
+                        "true".to_string()
+                    ))),
+                    right: Box::new(CMakeCondition::Comment {
+                        content: " comment".to_string(),
+                        tail: Some(Box::new(CMakeCondition::Value(CMakeValue::StringLiteral(
+                            "false".to_string()
+                        ))))
+                    })
+                }
+            )
+        );
+    }
+
     #[test]
     fn test_parse_condition_with_comment() {
         let input = r#"true
