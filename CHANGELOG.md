@@ -1,3 +1,13 @@
+# 0.1.11 (15-01-2024)
+
+* Fix parsing files that start with leading spaces
+* Fix parsing `TEST` unary operator in conditions
+* Fix parsing lower-case operators (`and`, `or` etc)
+* Parse bracket strings (multiline strings)
+* Ignore trailing commas after string literals `"string",`
+  - This technically changes the meaning of the document
+  - However, the trailing comma is invalid syntax
+
 # 0.1.10 (02-01-2024)
 
 * Fix parenthesis bugs
