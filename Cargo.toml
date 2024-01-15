@@ -5,7 +5,7 @@ authors = ["Pedro Tacla Yamada <tacla.yamada+git@gmail.com>"]
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/yamadapc/cmakefmt"
-version = "0.1.10"
+version = "0.1.11"
 edition = "2021"
 
 [dependencies]
