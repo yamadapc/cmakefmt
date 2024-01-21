@@ -3,6 +3,8 @@
 - - -
 Good enough CMake auto formatter. No settings, prints to STDOUT.
 
+[Blog post / Demo](https://beijaflor.io/blog/01-2024/cmakefmt-01/)
+
 ## Install
 ```
 cargo install cmakefmt
